@@ -1,72 +1,146 @@
+const toString = Object.prototype.toString
 export {
   isArguments,
   isArrayBuffer,
   isArrayLike,
   isArrayLikeObject,
   isBuffer,
-  isBoolean,
-  isDate,
-  isElement,
-  isEmpty,
   isEqual,
   isEqualWith,
   isError,
-  isFunction,
   isFinite,
   isLength,
-  isMap,
   isMatch,
   isMatchWith,
   isNative,
   isNil,
-  isNumber,
-  isNull,
   isObjectLike,
   isPlainObject,
-  isRegExp,
   isSafeInteger,
   isSet,
-  isString,
   isSymbol,
   isTypedArray,
   isUndefined,
   isWeakMap,
-  isWeakSet,
+  isWeakSet
 } from 'lodash-es'
-const toString = Object.prototype.toString
-
-export function is(val: unknown, type: string) {
+export const is = (val: unknown, type: string) => {
   return toString.call(val) === `[object ${type}]`
 }
 
-export function isDef<T = unknown>(val?: T): val is T {
+export const isDef = <T = unknown>(val?: T): val is T => {
   return typeof val !== 'undefined'
 }
 
-// TODO 此处 isObject 存在歧义
-export function isObject(val: any): val is Record<any, any> {
+export const isUnDef = <T = unknown>(val?: T): val is T => {
+  return !isDef(val)
+}
+
+export const isObject = (val: any): val is Record<any, any> => {
   return val !== null && is(val, 'Object')
 }
 
-// TODO 此处 isArray 存在歧义
-export function isArray(val: any): val is Array<any> {
-  return val && Array.isArray(val)
+export const isEmpty = <T = unknown>(val: T): val is T => {
+  if (val === null) {
+    return true
+  }
+  if (isArray(val) || isString(val)) {
+    return val.length === 0
+  }
+
+  if (val instanceof Map || val instanceof Set) {
+    return val.size === 0
+  }
+
+  if (isObject(val)) {
+    return Object.keys(val).length === 0
+  }
+
+  return false
 }
 
-export function isWindow(val: any): val is Window {
-  return typeof window !== 'undefined' && is(val, 'Window')
+export const isDate = (val: unknown): val is Date => {
+  return is(val, 'Date')
+}
+
+export const isNull = (val: unknown): val is null => {
+  return val === null
+}
+
+export const isNullAndUnDef = (val: unknown): val is null | undefined => {
+  return isUnDef(val) && isNull(val)
+}
+
+export const isNullOrUnDef = (val: unknown): val is null | undefined => {
+  return isUnDef(val) || isNull(val)
+}
+
+export const isNumber = (val: unknown): val is number => {
+  return is(val, 'Number')
+}
+
+export const isPromise = <T = any>(val: unknown): val is Promise<T> => {
+  return is(val, 'Promise') && isObject(val) && isFunction(val.then) && isFunction(val.catch)
+}
+
+export const isString = (val: unknown): val is string => {
+  return is(val, 'String')
+}
+
+export const isFunction = (val: unknown): val is Function => {
+  return typeof val === 'function'
+}
+
+export const isBoolean = (val: unknown): val is boolean => {
+  return is(val, 'Boolean')
+}
+
+export const isRegExp = (val: unknown): val is RegExp => {
+  return is(val, 'RegExp')
+}
+
+export const isArray = (val: any): val is Array<any> => {
+  return val && Array.isArray(val)
 }
 
 export const isServer = typeof window === 'undefined'
 
 export const isClient = !isServer
 
-export function isHttpUrl(path: string): boolean {
-  const reg = /^http(s)?:\/\/([\w-]+\.)+[\w-]+(\/[\w- ./?%&=]*)?/
+export const isUrl = (path: string): boolean => {
+  const reg =
+    /(((^https?:(?:\/\/)?)(?:[-:&=\+\$,\w]+@)?[A-Za-z0-9.-]+(?::\d+)?|(?:www.|[-:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&%@.\w_]*)#?(?:[\w]*))?)$/
   return reg.test(path)
 }
 
+export const isDark = (): boolean => {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+// 是否是图片链接
+export const isImgPath = (path: string): boolean => {
+  return /(https?:\/\/|data:image\/).*?\.(png|jpg|jpeg|gif|svg|webp|ico)/gi.test(path)
+}
+
+export const isEmptyVal = (val: any): boolean => {
+  return val === '' || val === null || val === undefined
+}
 export function isPascalCase(str: string): boolean {
   const regex = /^[A-Z][A-Za-z]*$/
   return regex.test(str)
 }
+export function isBase64Image(base64String) {
+  if (!base64String.startsWith('data:image/')) {
+    return false
+  }
+  return true
+}
+
+export const isEmptyObject = (val: any) => isObject(val) && Object.keys(val).length === 0
+/**
+ * 是否是SVGElement
+ * @param tag
+ * @returns
+ */
+export const isSVGElement = (tag: any) =>
+  typeof SVGElement !== 'undefined' && tag instanceof SVGElement

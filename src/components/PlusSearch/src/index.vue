@@ -1,0 +1,242 @@
+<template>
+  <PlusForm
+    ref="plusFormInstance"
+    v-bind="$attrs"
+    v-model="values"
+    :inline="inline"
+    :label-position="labelPosition"
+    :row-props="rowProps"
+    :col-props="colProps"
+    :columns="subColumns"
+    class="plus-search"
+    :has-footer="false"
+    @change="handleChange"
+  >
+    <!--表单项label插槽 -->
+    <template v-for="(_, key) in labelSlots" :key="key" #[key]="data">
+      <slot :name="key" v-bind="data"></slot>
+    </template>
+
+    <!--表单单项的插槽 -->
+    <template v-for="(_, key) in fieldSlots" :key="key" #[key]="data">
+      <slot :name="key" v-bind="data"></slot>
+    </template>
+
+    <!--el-form-item 下一行额外的内容 的插槽 -->
+    <template v-for="(_, key) in extraSlots" :key="key" #[key]="data">
+      <slot :name="key" v-bind="data"></slot>
+    </template>
+
+    <!--表单tooltip插槽 -->
+    <template v-if="$slots['tooltip-icon']" #tooltip-icon>
+      <slot name="tooltip-icon"></slot>
+    </template>
+
+    <template #search-footer>
+      <el-form-item
+        v-if="hasFooter"
+        class="plus-search__button__wrapper"
+        :label="labelPosition === 'top' ? 'placeholder' : ''"
+      >
+        <slot
+          name="footer"
+          :is-show-unfold="isShowUnfold"
+          :handle-reset="handleReset"
+          :handle-search="handleSearch"
+          :handle-unfold="handleUnfold"
+        >
+          <el-button v-if="hasReset" :icon="RefreshRight" @click="handleReset">
+            {{ resetText || t('plus.search.resetText') }}
+          </el-button>
+          <el-button type="primary" :loading="searchLoading" :icon="Search" @click="handleSearch">
+            {{ searchText || t('plus.search.searchText') }}
+          </el-button>
+
+          <el-link
+            v-if="hasUnfold && originData.length > showNumber"
+            class="plus-search__unfold"
+            type="primary"
+            :underline="false"
+            href="javaScript:;"
+            @click="handleUnfold"
+          >
+            {{ isShowUnfold ? t('plus.search.retract') : t('plus.search.expand') }}
+            <el-icon>
+              <ArrowUp v-if="isShowUnfold" />
+              <ArrowDown v-else />
+            </el-icon>
+          </el-link>
+        </slot>
+      </el-form-item>
+    </template>
+  </PlusForm>
+</template>
+
+<script lang="ts" setup>
+import type { PlusFormInstance } from '@/components/PlusForm'
+import { PlusForm } from '@/components/PlusForm'
+import { ref, computed, watch, unref, useSlots } from 'vue'
+import { ArrowDown, ArrowUp, Search, RefreshRight } from '@element-plus/icons-vue'
+import type { PlusColumn, FieldValues } from '@/components/PlusTable/types'
+import { ElFormItem, ElButton, ElIcon, ElLink } from 'element-plus'
+import { orderBy } from 'lodash-es'
+import {
+  getFieldSlotName,
+  getLabelSlotName,
+  getExtraSlotName,
+  filterSlots
+} from '@/components/PlusTable/utils'
+import {useI18n} from '@/hooks/web/useI18n'
+defineOptions({
+  name: 'PlusSearch'
+})
+
+const props = defineProps({
+  modelValue: {
+    type: Object,
+    default: () => ({})
+  },
+  defaultValues: {
+    type: Object,
+    default: () => ({})
+  },
+  hasFooter: {
+    type: Boolean,
+    default: true
+  },
+  hasReset: {
+    type: Boolean,
+    default: true
+  },
+  hasUnfold: {
+    type: Boolean,
+    default: true
+  },
+  searchLoading: {
+    type: Boolean,
+    default: false
+  },
+  searchText: {
+    type: String,
+    default: ''
+  },
+  resetText: {
+    type: String,
+    default: ''
+  },
+  inline: {
+    type: Boolean,
+    default: true
+  },
+  showNumber: {
+    type: Number,
+    default: 2
+  },
+  labelPosition: {
+    type: String,
+    default: undefined
+  },
+  columns: {
+    type: Array,
+    default: () => []
+  },
+  rowProps: {
+    type: Object,
+    default: () => ({
+      gutter: 20
+    })
+  },
+  colProps: {
+    type: Object,
+    default: () => ({
+      xs: 24,
+      sm: 12,
+      md: 8,
+      lg: 8,
+      xl: 6
+    })
+  }
+})
+
+const emit = defineEmits(['update:modelValue', 'search', 'change', 'reset', 'collapse'])
+
+const { t } = useI18n()
+const plusFormInstance = ref<PlusFormInstance | null>()
+const isShowUnfold = ref<boolean>(false)
+const values = ref<FieldValues>({})
+const slots = useSlots()
+
+/**
+ * 表单label的插槽
+ */
+const labelSlots = filterSlots(slots, getLabelSlotName())
+
+/*
+ * 表单单项的插槽
+ */
+const fieldSlots = filterSlots(slots, getFieldSlotName())
+/**
+ * el-form-item 下一行额外的内容 的插槽
+ */
+const extraSlots = filterSlots(slots, getExtraSlotName())
+
+const originData = computed<PlusColumn[]>(() => {
+  const filterData = props.columns
+    ?.filter((item) => unref(item?.hideInSearch) !== true)
+    // FIXME:  hideInForm 不应该传递
+    .map((item) => ({ ...item, hideInForm: false }))
+    // set order default value
+    .map((item) => ({ ...item, order: item?.order ? unref(item.order) : 0 }))
+  return orderBy(filterData, ['order'], ['desc'])
+})
+
+const subColumns = computed<PlusColumn[]>(() => {
+  if (props.hasUnfold && !isShowUnfold.value) {
+    return originData.value.slice(0, props.showNumber)
+  } else {
+    return originData.value
+  }
+})
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    values.value = val || {}
+  },
+  {
+    immediate: true
+  }
+)
+
+const handleChange = async (values: FieldValues, column: PlusColumn) => {
+  emit('update:modelValue', values)
+  emit('change', values, column)
+}
+
+const handleSearch = () => {
+  emit('search', values.value)
+}
+
+const handleReset = (): void => {
+  values.value = { ...props.defaultValues }
+  emit('update:modelValue', values.value)
+  emit('reset', values.value)
+}
+
+const handleUnfold = (e: MouseEvent) => {
+  e.preventDefault()
+  isShowUnfold.value = !isShowUnfold.value
+  emit('collapse', isShowUnfold.value)
+}
+
+defineExpose({
+  plusFormInstance,
+  handleReset,
+  handleSearch,
+  handleUnfold
+})
+</script>
+
+<style lang="scss" scoped>
+@import '@/components/PlusTable/styles/src/search.scss';
+</style>

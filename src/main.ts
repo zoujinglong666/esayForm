@@ -32,7 +32,7 @@ import 'virtual:uno.css'
 
 // 全局样式
 import '@/assets/styles/globals.scss'
-
+import { setupI18n } from '@/plugins/vueI18n'
 const app = createApp(App)
 app.use(FloatingVue, {
   distance: 12,
@@ -43,6 +43,7 @@ app.use(VXETable)
 app.use(pinia)
 app.use(router)
 app.use(ui)
+setupI18n(app)
 directive(app)
 if (icons.isOfflineUse) {
   for (const info of icons.collections)

@@ -1,0 +1,7 @@
+@use 'mixins/mixins' as *;
+
+@include b(page) {
+  @include e(table_wrapper) {
+    padding: 20px;
+  }
+}

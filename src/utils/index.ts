@@ -200,3 +200,7 @@ export function flatObject(data) {
   recurse (data, '')
   return result
 }
+export function formatMoney(val: string | number, format = '￥', decimal = 2): string {
+  if (!val) return ''
+  return `${format}${Number(val).toFixed(decimal)}`
+}

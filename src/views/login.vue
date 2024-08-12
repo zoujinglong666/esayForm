@@ -48,30 +48,13 @@ const loginRules = ref<FormRules>({
   ],
 })
 function handleLogin() {
-  localStorage.setItem('account', '123')
+  localStorage.setItem('account', 'admin')
   localStorage.setItem('token', 'res.data.token')
   localStorage.setItem('failure_time', 'res.data.failure_time')
   localStorage.setItem('avatar', 'res.data.avatar')
   router.push(redirect.value)
   location.reload()
-  return
-  loginFormRef.value && loginFormRef.value.validate((valid) => {
-    if (valid) {
-      loading.value = true
-      userStore.login(loginForm.value).then(() => {
-        loading.value = false
-        if (loginForm.value.remember)
-          localStorage.setItem('login_account', loginForm.value.account)
 
-        else
-          localStorage.removeItem('login_account')
-
-        router.push(redirect.value)
-      }).catch(() => {
-        loading.value = false
-      })
-    }
-  })
 }
 
 // 注册

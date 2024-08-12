@@ -345,6 +345,4 @@ defineExpose({
   handleReset
 })
 </script>
-<style lang="scss" scoped>
-@import '@/components/PlusTable/styles/src/form.scss';
-</style>
+

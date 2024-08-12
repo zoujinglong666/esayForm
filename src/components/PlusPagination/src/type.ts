@@ -5,7 +5,8 @@ export interface PlusPaginationSelfProps {
   modelValue?: PageInfo
   total?: number
   pageSizeList?: number[]
-  align?: 'left' | 'right'
+  align?: 'left' | 'right',
+  background?: boolean,
 }
 
 export type PlusPaginationProps = PlusPaginationSelfProps &

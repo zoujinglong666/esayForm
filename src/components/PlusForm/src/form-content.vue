@@ -132,6 +132,3 @@ const handleChange = (value: FieldValueType, column: PlusColumn) => {
 }
 </script>
 
-<style lang="scss" scoped>
-@import '@/components/PlusTable/styles/src/form-item.scss';
-</style>

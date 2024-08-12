@@ -237,6 +237,4 @@ defineExpose({
 })
 </script>
 
-<style lang="scss" scoped>
-@import '@/components/PlusTable/styles/src/search.scss';
-</style>
+

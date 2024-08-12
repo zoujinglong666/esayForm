@@ -13,7 +13,7 @@
         class="plus-table-title-bar__toolbar__refresh"
         @click="handleRefresh"
       >
-        <el-tooltip effect="dark" :content="'plus.table.refresh'" placement="top">
+        <el-tooltip effect="dark" :content="t('plus.table.refresh')" placement="top">
           <slot name="refresh-icon">
             <el-icon
               :size="iconSize"

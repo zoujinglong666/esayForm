@@ -1,43 +1,49 @@
 <template>
-  <el-pagination
-    layout="total, sizes, prev, pager, next, jumper"
-    :background="false"
-    v-model:current-page="pageInfo.page"
-    v-model:page-size="pageInfo.pageSize"
-    :total="total"
-    :page-sizes="pageSizeList"
-    v-bind="$attrs"
-    @size-change="handleSizeChange"
-    @current-change="handleCurrentChange"
-  />
+  <div class="plus-pagination">
+    <slot v-if="align === 'right'" name="pagination-left">
+      <span />
+    </slot>
+    <el-pagination
+      layout="total, sizes, prev, pager, next, jumper"
+      :background="props.background"
+      :current-page="pageInfo.page"
+      :page-size="pageInfo.pageSize"
+      :total="total"
+      :page-sizes="pageSizeList"
+      v-bind="$attrs"
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+    />
+    <slot v-if="align === 'left'" name="pagination-right"> <span /></slot>
+  </div>
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { ref, watchEffect } from 'vue'
 import { DefaultPageSizeList, DefaultPageInfo } from '@/components/PlusTable/constants'
+import { ElPagination } from 'element-plus'
+import type { PlusPaginationSelfProps } from './type'
+import {PlusPaginationEmits} from "@/components/PlusTable";
+import {PageInfo} from "@/components/PlusTable/types";
 
 defineOptions({
   name: 'PlusPagination'
 })
 
-const props = defineProps({
-  total: {
-    type: Number,
-    default: 0
-  },
-  pageSizeList: {
-    type: Array,
-    default: () => [...DefaultPageSizeList]
-  },
-  modelValue: {
-    type: Object,
-    default: () => ({ ...DefaultPageInfo })
-  }
+const props = withDefaults(defineProps<PlusPaginationSelfProps>(), {
+  total: 0,
+  pageSizeList: () => [...DefaultPageSizeList],
+  modelValue: () => ({ ...DefaultPageInfo }),
+  align: 'right',
+  background: true
 })
+const emit = defineEmits<PlusPaginationEmits>()
 
-const emit = defineEmits(['update:modelValue', 'size-change', 'current-change', 'change'])
+const pageInfo = ref<PageInfo>({ ...DefaultPageInfo })
 
-const pageInfo = ref({ ...props.modelValue })
+watchEffect(() => {
+  pageInfo.value = { ...props.modelValue }
+})
 
 const handleEmit = () => {
   emit('update:modelValue', pageInfo.value)

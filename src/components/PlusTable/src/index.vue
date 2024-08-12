@@ -506,6 +506,4 @@ defineExpose({
 })
 </script>
 
-<style lang="scss" scoped>
-@import '../styles/src/table.scss';
-</style>
+

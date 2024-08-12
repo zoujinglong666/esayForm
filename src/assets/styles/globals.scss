@@ -12,6 +12,7 @@
   --g-toolbar-height: 50px;
 }
 
+@import url('@/assets/styles/resources/plus.scss');
 // 明暗模式 CSS 变量
 /* stylelint-disable-next-line no-duplicate-selectors */
 :root {
@@ -138,3 +139,4 @@ textarea {
 [data-overlayscrollbars-contents] {
   overscroll-behavior: contain;
 }
+

@@ -113,7 +113,7 @@ const tableConfig = [
     label: '标签',
     width: 120,
     prop: 'tag',
-    valueType: 'tag',
+    valueType: 'plus-input-tag',
     fieldProps: (value: string) => {
       return { type: value }
     }

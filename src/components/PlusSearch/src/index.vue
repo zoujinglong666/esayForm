@@ -130,7 +130,7 @@ const props = defineProps({
   },
   showNumber: {
     type: Number,
-    default: 2
+    default: 8
   },
   labelPosition: {
     type: String,

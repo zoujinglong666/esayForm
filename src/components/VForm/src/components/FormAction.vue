@@ -92,11 +92,10 @@ function toggleAdvanced() {
 
       <slot name="advanceBefore" />
       <el-button
-        v-if="showAdvancedButton && !hideAdvanceBtn"
+
         @click="toggleAdvanced"
       >
-        {{ isAdvanced ? 'component.form.putAway' : 'component.form.unfold' }}
-        <BasicArrow class="ml-1" :expand="!isAdvanced" up />
+        {{ isAdvanced ? '展开' : '收起' }}
       </el-button>
       <slot name="advanceAfter" />
     </el-col>

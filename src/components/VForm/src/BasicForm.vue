@@ -11,9 +11,8 @@ import type FormAction from './components/FormAction.vue'
 import { dateItemType, isIncludeSimpleComponents } from './helper'
 import { useFormValues } from './hooks/useFormValues'
 import useAdvanced from './hooks/useAdvanced'
-
 import { useFormEvents } from './hooks/useFormEvents'
-import { createFormContext, useFormContext } from './hooks/useFormContext'
+import { createFormContext } from './hooks/useFormContext'
 import { useAutoFocus } from './hooks/useAutoFocus'
 import { basicProps } from './props'
 import { useModalContext } from '@/components/Modal'
@@ -46,12 +45,7 @@ const advanceState = reactive<AdvanceState> ({
   actionSpan: 6,
 })
 const cols = { xs: 24, sm: 12, md: 12, lg: 8, xl: 6, xxl: 6 }
-// const allSlotsName = computed(() => Object.keys(toRaw(slots)))
 const colArr = ['xxl', 'xl', 'lg', 'md', 'sm', 'xs']
-const { resetAction, submitAction } = useFormContext ()
-
-function handleReset() {
-}
 
 // 用来保存当前页面尺寸处于哪个尺寸区间
 const screens = reactive ({
@@ -104,7 +98,7 @@ const getRow = computed (() => {
   }
 })
 
-const getBindValue = computed (() => ({ ...attrs, ...props, ...unref (getProps) }) as AntFormProps)
+const getBindValue = computed (() => ({ ...attrs, ...props, ...unref (getProps) }) as any)
 
 const getSchema = computed ((): FormSchema[] => {
   const schemas: FormSchema[] = unref (schemaRef) || (unref (getProps).schemas as any)
@@ -140,7 +134,7 @@ const getSchema = computed ((): FormSchema[] => {
     ) {
       const opt = {
         schema,
-        tableAction: props.tableAction ?? ({} as TableActionType),
+        tableAction: props.tableAction ?? ({} as any),
         formModel,
         formActionType: {} as FormActionType,
       }
@@ -446,31 +440,30 @@ onMounted (() => {
           </FormItem>
         </el-col>
 
-        <ElFormItem label-width="auto" style="white-space: nowrap;">
-          <div style="white-space: nowrap;">
-            <ElButton type="primary" @click="submitAction">
-              筛选
-            </ElButton>
-            <el-button plain @click="handleReset">
-              重置
-            </el-button>
-            <ElButton link @click="isFold = !isFold">
-              <template #icon>
-                <SvgIcon :name="!isFold ? 'ep:caret-bottom' : 'ep:caret-top' " />
-              </template>
-              {{ !isFold ? '展开' : '收起' }}
-            </ElButton>
-          </div>
-        </ElFormItem>
-
-        <!--          <FormAction v-bind="getFormActionBindProps" @toggle-advanced="handleToggleAdvanced"> -->
-        <!--            <template -->
-        <!--              #[item]="data" -->
-        <!--              v-for="item in ['resetBefore', 'submitBefore', 'advanceBefore', 'advanceAfter']" -->
-        <!--            > -->
-        <!--              <slot :name="item" v-bind="data || {}"></slot> -->
-        <!--            </template> -->
-        <!--          </FormAction> -->
+<!--        <ElFormItem label-width="auto" style="white-space: nowrap;">-->
+<!--          <div style="white-space: nowrap;">-->
+<!--            <ElButton type="primary" @click="submitAction">-->
+<!--              筛选-->
+<!--            </ElButton>-->
+<!--            <el-button plain @click="handleReset">-->
+<!--              重置-->
+<!--            </el-button>-->
+<!--            <ElButton link @click="isFold = !isFold">-->
+<!--              <template #icon>-->
+<!--                <SvgIcon :name="!isFold ? 'ep:caret-bottom' : 'ep:caret-top' " />-->
+<!--              </template>-->
+<!--              {{ !isFold ? '展开' : '收起' }}-->
+<!--            </ElButton>-->
+<!--          </div>-->
+<!--        </ElFormItem>-->
+        <FormAction v-bind="getFormActionBindProps" @toggle-advanced="handleToggleAdvanced">
+          <template
+            #[item]="data"
+            v-for="item in ['resetBefore', 'submitBefore', 'advanceBefore', 'advanceAfter']"
+          >
+            <slot :name="item" v-bind="data || {}"></slot>
+          </template>
+        </FormAction>
         <slot name="formFooter" />
       </el-row>
     </el-form>

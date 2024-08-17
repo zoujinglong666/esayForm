@@ -102,6 +102,14 @@ const routes: RouteRecordRaw = {
             title: '省市区街道联动',
           },
         },
+        {
+          path: 'form',
+          name: 'componentExampleExtendForm',
+          component: () => import('@/views/component_extend_example/form.vue'),
+          meta: {
+            title: '动态表单',
+          },
+        },
       ],
     },
   ],

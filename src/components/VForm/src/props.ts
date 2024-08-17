@@ -1,11 +1,9 @@
 import type { CSSProperties, PropType } from 'vue'
-import type { RowProps } from 'ant-design-vue/lib/grid/Row'
-import type { FieldMapToTime, FormSchema } from './types/form'
 import type { ColEx } from './types'
-import type { TableActionType } from '@/components/Table'
 import { propTypes } from '@/utils/propTypes'
+import {FormSchema} from "@/components/VForm";
+import {ButtonProps, RowProps} from "element-plus";
 
-import type { ButtonProps } from '@/components/Button'
 
 export const basicProps = {
   model: {
@@ -13,7 +11,7 @@ export const basicProps = {
     default: () => ({}),
   },
 
-  onlyDisplayFormCount: propTypes.number.def(6),
+  onlyDisplayFormCount: propTypes.number.def(3),
 
   // 标签宽度  固定宽度
   labelWidth: {
@@ -21,7 +19,7 @@ export const basicProps = {
     default: 0,
   },
   fieldMapToTime: {
-    type: Array as PropType<FieldMapToTime>,
+    type: Array,
     default: () => [],
   },
   compact: propTypes.bool,
@@ -94,7 +92,7 @@ export const basicProps = {
 
   layout: propTypes.oneOf(['horizontal', 'vertical', 'inline']).def('horizontal'),
   tableAction: {
-    type: Object as PropType<TableActionType>,
+    type: Object,
   },
 
   wrapperCol: Object as PropType<Partial<ColEx>>,

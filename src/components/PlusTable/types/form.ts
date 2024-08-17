@@ -25,14 +25,10 @@ import type {
   ProgressProps
 } from 'element-plus'
 import type { TimeSelectProps } from 'element-plus/es/components/time-select/src/time-select'
-// import type {
-//   PlusFormProps,
-//   PlusRadioProps,
-//   PlusDatePickerProps,
-//   PlusInputTagProps
-// } from '@plus-pro-components/components'
 import type { PropsItemType, PlusColumn, OptionsRow, RenderTypes } from './plus'
 import type { Mutable, RecordType } from './global'
+import {PlusFormProps} from "@/components/PlusForm";
+import {PlusInputTagProps} from "@/components/PlusInputTag/src/index.vue";
 
 export {}
 
@@ -165,8 +161,8 @@ export type FieldProps = Partial<
       Omit<TimePickerDefaultProps, OmitTypes> &
       Omit<TimeSelectProps, OmitTypes> &
       // 内置组件表单
-      Omit<PlusRadioProps, OmitTypes> &
-      Omit<PlusDatePickerProps, OmitTypes> &
+      // Omit<PlusRadioProps, OmitTypes> &
+      // Omit<PlusDatePickerProps, OmitTypes> &
       Omit<PlusInputTagProps, OmitTypes> &
       // 显示
       Omit<TextProps, OmitTypes> &
@@ -249,7 +245,7 @@ export interface FormColumnProps {
    *      })
    *  }
    * ]
-   * 
+   *
    * ```
    */
   renderField?: (

@@ -300,9 +300,6 @@ export default defineComponent ({
           const target = e ? e.target : null
           const value = target ? target.value : e
 
-          // 获取当前字段的旧值
-          console.log ('oldValue', oldValue)
-
           // 如果新值和旧值不相等，才更新并触发 onchange 函数
           if (value !== oldValue)
             props.setFormModel(field, value, props.schema)

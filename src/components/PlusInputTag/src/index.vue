@@ -66,21 +66,18 @@ function handleClick() {
 function handleClose(tag: string) {
   state.tags = state.tags.filter(item => item !== tag)
 }
-const message = useMessage()
+
 function handleValue() {
   if (
     state.inputValue.trim()
     && !state.tags.includes(state.inputValue.trim())
     && state.tags.length < props.limit
-  ){
+  )
     state.tags.push(state.inputValue.trim())
 
-    state.inputValue = ''
-    emit('update:modelValue', state.tags)
-    emit('change', state.tags)
-  }
-
-
+  state.inputValue = ''
+  emit('update:modelValue', state.tags)
+  emit('change', state.tags)
 }
 
 function handle(type: TriggerType) {
@@ -89,9 +86,8 @@ function handle(type: TriggerType) {
     : isString(props.trigger)
       ? [props.trigger]
       : ['blur', 'enter', 'space']
-  if (triggerList.includes(type)){
+  if (triggerList.includes(type))
     handleValue()
-  }
 }
 
 defineExpose({ inputInstance, tagInstance })
@@ -134,5 +130,4 @@ defineExpose({ inputInstance, tagInstance })
     />
   </div>
 </template>
-
 

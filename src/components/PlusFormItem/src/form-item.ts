@@ -21,6 +21,7 @@ import {
 } from 'element-plus'
 import type { FormItemValueType } from '@/components/PlusTable/types'
 import type { Component } from 'vue'
+import InputTag from '@/components/PlusInputTag/src/index.vue'
 
 export type FieldComponentType = {
   /**
@@ -73,6 +74,9 @@ export const FieldComponentMap: FieldComponentMapType = {
   },
   'plus-date-picker': {
     component: ElDatePicker
+  },
+  'plus-input-tag': {
+    component: InputTag,
   },
   // el
   autocomplete: {

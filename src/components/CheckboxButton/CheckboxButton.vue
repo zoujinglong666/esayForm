@@ -34,7 +34,7 @@ function handleChange(val) {
   >
     <el-checkbox-button v-for="(item, index) in props.options" :key="index" :label="item">
       {{
-        item
+        item.label || item.value
       }}
     </el-checkbox-button>
   </el-checkbox-group>

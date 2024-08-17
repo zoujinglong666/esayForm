@@ -222,6 +222,7 @@ function handleSelect(item: any) {
     border: 1px solid transparent;
     border-radius: 4px;
     transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+    padding: 8px 16px;
 
     &.noBorder {
       border: none !important;

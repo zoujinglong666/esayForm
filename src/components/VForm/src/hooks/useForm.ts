@@ -1,10 +1,9 @@
 import { nextTick, onUnmounted, ref, unref, watch } from 'vue'
-import type { FormValidateCallback } from 'element-plus'
-import type { FormActionType, FormProps } from '../types'
+import type {FormProps, FormValidateCallback} from 'element-plus'
 import { throwError } from '@/utils/common/log'
 import { isProdMode } from '@/utils/env'
 import type { Nullable } from '@/hooks/vben/types'
-import type { FormSchema } from '@/components/VForm'
+import type {FormActionType, FormSchema} from '@/components/VForm'
 
 export default function useForm(props?: Partial<FormProps>) {
   const formAction = ref<Nullable<FormActionType>>(null)

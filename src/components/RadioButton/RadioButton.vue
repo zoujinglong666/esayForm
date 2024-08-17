@@ -29,6 +29,4 @@ function handleChange(val) {
   </el-radio-group>
 </template>
 
-<style scoped lang="scss">
 
-</style>

@@ -1,30 +1,7 @@
 <script setup lang="ts">
 import useForm from '@/components/VForm/src/hooks/useForm.ts'
 import { BasicForm } from '@/components/VForm'
-import {
-  ElAutocomplete, ElCascader,
-  ElCheckbox, ElColorPicker, ElDivider,
-  ElInput,
-  ElLink,
-  ElRadio, ElRate,
-  ElSelect,
-  ElSlider,
-  ElSwitch,
-  ElText,
-  ElTimePicker, ElTimeSelect, ElUpload
-} from "element-plus";
-import InputNumber from "@/components/InputNumber/InputNumber.vue";
-import DateSelect from "@/components/DatePicker/DatePicker.vue";
-import DataSelect from "@/components/DataSelect/DataSelect.vue";
-import TimeSelect from "@/components/TimeSelect/TimeSelect.vue";
-import RadioGroup from "@/components/RadioGroup/RadioGroup.vue";
-import CheckBoxGroup from "@/components/CheckBoxGroup/CheckBoxGroup.vue";
-import ImageUpload from "@/components/ImageUpload/index.vue";
-import DataCheckBox from "@/components/DataCheckbox/DataCheckBox.vue";
-import CheckBoxButton from "@/components/CheckboxButton/CheckboxButton.vue";
-import RadioButton from "@/components/RadioButton/RadioButton.vue";
-import DataInput from "@/components/DataInput/DataInput.vue";
-import {componentMap} from "@/components/VForm/src/componentMap.ts";
+
 
 const schemas = ref ([
   {
@@ -163,7 +140,6 @@ const schemas = ref ([
     component: 'ImageUpload',
     label: 'ImageUpload',
     componentProps: {
-      modelValue: 'fileList',
     }
   },
   {
@@ -188,16 +164,7 @@ const schemas = ref ([
     component: 'CheckBoxButton',
     label: 'CheckBoxButton',
     componentProps: {
-      options: [{
-        value: '选项1',
-        label: '黄金糕',
-      }, {
-        value: '选项2',
-        label: '双皮奶',
-      }, {
-        value: '选项3',
-        label: '蚵仔煎',
-      }],
+      options: ['选项1', '选项2', '选项3'],
     },
   },
 ])
@@ -226,6 +193,20 @@ const pageData = ref ({
   input: '',
   select: '选项1',
   timeSelect: '12:00:00',
+  switch: true,
+  radio: '选项1',
+  checkboxGroup: ['选项1', '选项2'],
+  rate: 3,
+  slider: 30,
+  colorInput: '#13c2c2',
+  dataCheckbox: ['选项1', '选项3'],
+  Autocomplete: '选项1',
+  InputNumber: 10,
+  ImageUpload: [],
+  RadioButton: '选项1',
+  CheckBoxButton: ['选项1', '选项2'],
+
+
 })
 
 function handleFieldValueChange(key,value) {

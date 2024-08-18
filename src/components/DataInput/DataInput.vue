@@ -24,17 +24,6 @@ const props = withDefaults (defineProps<DataInputPropsType> (), {
 
 })
 const emits = defineEmits (['update:modelValue', 'change', 'change', 'blur', 'clear'])
-const valueCom = computed ({
-  get() {
-    return props.modelValue
-  },
-  set(val) {
-    if (val === null || val == undefined)
-      emits ('update:modelValue', '')
-
-    emits ('update:modelValue', val)
-  },
-})
 const emitData = ref('')
 // Embedded in the form, just use the hook binding to perform form verification
 const [state] = useRuleFormItem(props, 'modelValue', 'change', emitData)
@@ -44,12 +33,7 @@ function handleChange(val) {
 
   emits('change', val)
 }
-function handleBlur(val) {
-  if (val === undefined || val === null)
-    emits('blur', '')
 
-  emits('blur', val)
-}
 function handleClear() {
   emits('clear')
 }
@@ -58,7 +42,7 @@ function handleClear() {
 <template>
   <el-input
     v-bind="$attrs" v-model="state" :title="state" :placeholder="props.placeholder" clearable :type="props.type" @clear="handleClear"
-    @change="handleChange" @blur="handleBlur"
+    @change="handleChange"
   >
     <template v-for="(_, name) in $slots" #[name]="scope">
       <slot :name="name" v-bind="scope || {}" />

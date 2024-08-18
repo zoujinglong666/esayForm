@@ -245,7 +245,7 @@ export default defineComponent ({
       if (characterInx !== -1 && !rules[characterInx].validator) {
         rules[characterInx].message
           = rules[characterInx].message
-          || t ('component.form.maxTip', [rules[characterInx].max] as Recordable<any>)
+          ||  ('component.form.maxTip')
       }
       return rules
     }
@@ -488,4 +488,9 @@ export default defineComponent ({
 .data-width {
   width: 100% !important;
 }
+
+.el-form-item__content>* {
+  width: 100% !important;
+}
+
 </style>

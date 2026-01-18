@@ -43,7 +43,7 @@
       </template>
 
       <!-- 主渲染区域：编辑模式 + “禁用字段”详情模式 -->
-      <template v-if="!detailMode || props.detailAsDisabledField">
+      <template v-if="!detailMode || props.disabledInDetail">
         <template v-if="renderField && isFunction(renderField)">
           <PlusRender
             v-if="valueIsReady"
@@ -280,7 +280,7 @@ export interface PlusFormItemProps {
   fieldChildrenSlot?: PlusColumn['fieldChildrenSlot'];
   index?: number;
   detailMode?: boolean;
-  detailAsDisabledField?: PlusColumn['detailAsDisabledField']
+  disabledInDetail?: PlusColumn['disabledInDetail']
 }
 export interface PlusFormItemEmits {
   (e: 'update:modelValue', value: FieldValueType): void
@@ -321,7 +321,7 @@ const props = defineProps({
   fieldChildrenSlot: { type: Function, default: undefined },
   index: { type: Number, default: 0 },
   detailMode: { type: Boolean, default: false },
-  detailAsDisabledField: { type: Boolean, default: false }
+  disabledInDetail: { type: Boolean, default: false }
 })
 const emit = defineEmits<PlusFormItemEmits>()
 
@@ -342,7 +342,7 @@ const formFieldRefs = inject(TableFormFieldRefInjectionKey, {}) as unknown as Re
  */
 const fieldPropsForRender = computed(() => {
   const base = { ...customFieldProps.value };
-  if (props.detailMode && props.detailAsDisabledField) {
+  if (props.detailMode && props.disabledInDetail) {
     return { ...base, disabled: true };
   }
   return base;
@@ -353,7 +353,7 @@ const fieldPropsForRender = computed(() => {
  */
 const getCommonPropsForRender = computed(() => {
   const base = { ...commonProps.value };
-  if (props.detailMode && props.detailAsDisabledField) {
+  if (props.detailMode && props.disabledInDetail) {
     return { ...base, disabled: true };
   }
   return base;

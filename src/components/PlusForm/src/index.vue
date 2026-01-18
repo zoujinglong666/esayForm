@@ -1,13 +1,14 @@
 <template>
   <el-form
     ref="formInstance"
-    :rules="rules"
+    :rules="props.detailMode ? {} : rules"
     :label-width="hasLabel ? labelWidth : 0"
     class="plus-form"
     :class="hasLabel ? '' : 'no-has-label'"
     :label-position="labelPosition"
     :validate-on-rule-change="false"
     :label-suffix="hasLabel ? labelSuffix : ''"
+    :hide-required-asterisk="props.detailMode"
     v-bind="attrs"
     :model="model"
     @validate="handleValidate"

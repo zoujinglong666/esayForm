@@ -47,6 +47,14 @@
             ></el-option>
           </el-select>
         </template>
+        <template v-else-if="column.el == 'radio' && readonly">
+          <!-- readonly 模式下 radio 保持编辑样式但禁用 -->
+          <el-radio-group v-model="model[column.prop]" disabled v-bind="column.fieldProps">
+            <el-radio :value="option.value" v-for="(option, i) in column.enum" :key="i" disabled>{{
+                option.label
+              }}</el-radio>
+          </el-radio-group>
+        </template>
         <template v-else-if="column.el == 'radio'">
           <el-radio-group v-model="model[column.prop]" :disabled="column.disabled" v-bind="column.fieldProps">
             <el-radio :value="option.value" v-for="(option, i) in column.enum" :key="i" :disabled="option.disabled">{{
@@ -99,7 +107,7 @@
 <script setup lang="ts">
 import { Ref, inject } from "vue";
 const props = defineProps(["column"]);
-const model: Ref<any> | undefined = inject("model");
+const model: Ref<any> | undefined = inject("model");model
 const emptyText = inject("emptyText");
 const readonly = inject("readonly");
 

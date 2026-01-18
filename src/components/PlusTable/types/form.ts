@@ -265,6 +265,12 @@ export interface FormColumnProps {
   hasLabel?: boolean | Ref<boolean> | ComputedRef<boolean>
 
   /**
+   * 在详情模式（detailMode）下是否以禁用的表单组件形式展示
+   * 默认 false（即显示纯文本）
+   */
+  detailAsDisabledField?: boolean | Ref<boolean> | ComputedRef<boolean>
+
+  /**
    * @desc 渲染form表单的label
    * @example
    * ```ts

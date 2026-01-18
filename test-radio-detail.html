@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio Detail Mode Test</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus@2.4.4/dist/index.full.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus@2.4.4/dist/index.css">
+</head>
+<body>
+    <div id="app">
+        <h3>详情模式测试</h3>
+        <el-form>
+            <el-form-item label="性别" class="plus-form-item">
+                <div class="plus-form-item-detail-text">
+                    <span>男</span>
+                </div>
+            </el-form-item>
+        </el-form>
+
+        <h3>编辑模式测试</h3>
+        <el-form>
+            <el-form-item label="性别">
+                <el-radio-group v-model="gender">
+                    <el-radio label="male">男</el-radio>
+                    <el-radio label="female">女</el-radio>
+                </el-radio-group>
+            </el-form-item>
+        </el-form>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    gender: 'male'
+                }
+            }
+        }).use(ElementPlus).mount('#app');
+    </script>
+
+    <style>
+        .plus-form-item-detail-text {
+            color: #606266;
+            line-height: 40px;
+            font-size: 14px;
+        }
+
+        .detail-empty {
+            color: #C0C4CC;
+        }
+    </style>
+</body>
+</html>

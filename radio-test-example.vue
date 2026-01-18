@@ -22,7 +22,6 @@ const columns = [
     label: '性别',
     prop: 'gender',
     valueType: 'radio',
-    detailAsDisabledField: true,
     options: [
       { label: '男', value: 'male' },
       { label: '女', value: 'female' }

@@ -3,9 +3,9 @@
     <el-form-item
       ref="formItemInstance"
       :label="hasLabel ? labelValue : ''"
-      :prop="prop"
+      :prop="detailMode ? undefined : prop"
       class="plus-form-item"
-      v-bind="customFormItemProps"
+      v-bind="detailMode ? { ...customFormItemProps, showMessage: false, error: '' } : customFormItemProps"
       :label-width="hasLabel ? customFormItemProps?.labelWidth : '0px'"
     >
       <template v-if="hasLabel" #label="{ label: currentLabel }">
@@ -42,48 +42,17 @@
         </span>
       </template>
 
-      <!-- 详情模式：纯文本显示 -->
-      <template v-if="detailMode">
-        <div class="plus-form-item-detail-text">
-          <span v-if="state === null || state === undefined || state === ''" class="detail-empty">--</span>
-          <template v-else>
-            <template v-if="renderField && isFunction(renderField)">
-              <PlusRender
-                :render="renderField"
-                :params="params"
-                :callback-value="state"
-                :custom-field-props="customFieldProps"
-                render-type="detail"
-              />
-            </template>
-            <slot
-              v-else-if="$slots[getFieldSlotName(prop)]"
-              :name="getFieldSlotName(prop)"
-              :prop="prop"
-              :label="labelValue"
-              :field-props="customFieldProps"
-              :value-type="valueType"
-              :column="props"
-              :value="state"
-            />
-            <template v-else>
-              {{ getDisplayValue(state, valueType, customOptions.value) }}
-            </template>
-          </template>
-        </div>
-      </template>
-
-      <!-- 编辑模式：正常表单 -->
-      <template v-else>
+      <!-- 主渲染区域：编辑模式 + “禁用字段”详情模式 -->
+      <template v-if="!detailMode || props.detailAsDisabledField">
         <template v-if="renderField && isFunction(renderField)">
           <PlusRender
             v-if="valueIsReady"
             :render="renderField"
             :params="params"
             :callback-value="state"
-            :custom-field-props="customFieldProps"
+            :custom-field-props="fieldPropsForRender"
             render-type="form"
-            :handle-change="handleChange"
+            :handle-change="handleChangeIfEditable"
           />
         </template>
 
@@ -92,20 +61,21 @@
           :name="getFieldSlotName(prop)"
           :prop="prop"
           :label="labelValue"
-          :field-props="customFieldProps"
+          :field-props="fieldPropsForRender"
           :value-type="valueType"
           :column="props"
-        ></slot>
+          :value="state"
+        />
 
         <el-select
-          v-else-if="valueType === 'select' && customFieldProps.multiple === true"
+          v-else-if="valueType === 'select' && fieldPropsForRender.multiple === true"
           ref="fieldInstance"
-          v-model="state"
+          :model-value="state"
           :placeholder="t('plus.field.pleaseSelect') + labelValue"
           class="plus-form-item-field"
           clearable
-          v-bind="customFieldProps"
-          @update:model-value="handleChange"
+          v-bind="fieldPropsForRender"
+          @update:model-value="handleChangeIfEditable"
         >
           <template v-for="(fieldSlot, key) in fieldSlots" :key="key" #[key]="data">
             <component :is="fieldSlot" v-bind="data" />
@@ -137,11 +107,11 @@
             :is="getFieldComponent(valueType).component"
             v-if="getFieldComponent(valueType).children"
             ref="fieldInstance"
-            v-model="state"
+            :model-value="state"
             class="plus-form-item-field"
             clearable
-            v-bind="commonProps"
-            @update:model-value="handleChange"
+            v-bind="getCommonPropsForRender"
+            @update:model-value="handleChangeIfEditable"
           >
             <template v-for="(fieldSlot, key) in fieldSlots" :key="key" #[key]="data">
               <component :is="fieldSlot" :value="state" :column="params" v-bind="data" />
@@ -177,12 +147,12 @@
             :is="getFieldComponent(valueType).component"
             v-else
             ref="fieldInstance"
-            v-model="state"
+            :model-value="state"
             class="plus-form-item-field"
             clearable
             :field-children-slot="fieldChildrenSlot"
-            v-bind="commonProps"
-            @update:model-value="handleChange"
+            v-bind="getCommonPropsForRender"
+            @update:model-value="handleChangeIfEditable"
           >
             <template v-for="(fieldSlot, key) in fieldSlots" :key="key" #[key]="data">
               <component :is="fieldSlot" :model-value="state" :column="params" v-bind="data" />
@@ -194,7 +164,7 @@
           v-else-if="valueType === 'text'"
           ref="fieldInstance"
           class="plus-form-item-field"
-          v-bind="customFieldProps"
+          v-bind="fieldPropsForRender"
         >
           {{ state }}
         </el-text>
@@ -203,7 +173,7 @@
           v-else-if="valueType === 'divider'"
           ref="fieldInstance"
           class="plus-form-item-field"
-          v-bind="customFieldProps"
+          v-bind="fieldPropsForRender"
         >
           {{ state }}
         </el-divider>
@@ -211,18 +181,28 @@
         <el-input
           v-else
           ref="fieldInstance"
-          v-model="state"
+          :model-value="state"
           class="plus-form-item-field"
           :placeholder="t('plus.field.pleaseEnter') + labelValue"
           autocomplete="off"
           clearable
-          v-bind="customFieldProps"
-          @update:model-value="handleChange"
+          v-bind="fieldPropsForRender"
+          @update:model-value="handleChangeIfEditable"
         >
           <template v-for="(fieldSlot, key) in fieldSlots" :key="key" #[key]="data">
             <component :is="fieldSlot" :model-value="state" :column="params" v-bind="data" />
           </template>
         </el-input>
+      </template>
+
+      <!-- 纯文本详情模式（默认行为） -->
+      <template v-else>
+        <div class="plus-form-item-detail-text">
+          <span v-if="state == null || state === ''" class="detail-empty">--</span>
+          <template v-else>
+            {{ getDisplayValue(state, valueType, customOptions.value) }}
+          </template>
+        </div>
       </template>
     </el-form-item>
   </div>
@@ -299,7 +279,8 @@ export interface PlusFormItemProps {
   fieldSlots?: PlusColumn['fieldSlots'];
   fieldChildrenSlot?: PlusColumn['fieldChildrenSlot'];
   index?: number;
-  detailMode?: boolean
+  detailMode?: boolean;
+  detailAsDisabledField?: PlusColumn['detailAsDisabledField']
 }
 export interface PlusFormItemEmits {
   (e: 'update:modelValue', value: FieldValueType): void
@@ -339,7 +320,8 @@ const props = defineProps({
   fieldSlots: { type: Object, default: () => ({}) },
   fieldChildrenSlot: { type: Function, default: undefined },
   index: { type: Number, default: 0 },
-  detailMode: { type: Boolean, default: false }
+  detailMode: { type: Boolean, default: false },
+  detailAsDisabledField: { type: Boolean, default: false }
 })
 const emit = defineEmits<PlusFormItemEmits>()
 
@@ -354,6 +336,37 @@ const valueIsReady = ref(false)
 const labelValue = computed(() => getLabel(props.label))
 const params = computed(() => ({ ...props, label: labelValue.value }))
 const formFieldRefs = inject(TableFormFieldRefInjectionKey, {}) as unknown as Ref<FormFieldRefsType>
+
+/**
+ * 合并 fieldProps，并在需要时强制 disabled
+ */
+const fieldPropsForRender = computed(() => {
+  const base = { ...customFieldProps.value };
+  if (props.detailMode && props.detailAsDisabledField) {
+    return { ...base, disabled: true };
+  }
+  return base;
+});
+
+/**
+ * 同样处理 commonProps（用于内置组件如 select、input 等）
+ */
+const getCommonPropsForRender = computed(() => {
+  const base = { ...commonProps.value };
+  if (props.detailMode && props.detailAsDisabledField) {
+    return { ...base, disabled: true };
+  }
+  return base;
+});
+
+/**
+ * 仅在非详情模式下触发 change
+ */
+const handleChangeIfEditable = (val: FieldValueType) => {
+  if (!props.detailMode) {
+    handleChange(val);
+  }
+};
 
 /**
  * 默认值是数组的情况

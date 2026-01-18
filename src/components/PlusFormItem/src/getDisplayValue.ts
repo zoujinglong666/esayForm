@@ -12,6 +12,7 @@ export function getDisplayValue(
     return ''
   }
 
+
   // 处理单选框和下拉选择
   if ((valueType === 'radio' || valueType === 'select' || valueType === 'select-v2') && options.length > 0) {
     if (Array.isArray(value)) {

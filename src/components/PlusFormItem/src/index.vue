@@ -1,5 +1,5 @@
 <template>
-  <template v-if="valueIsReady">
+  <div v-if="valueIsReady">
     <el-form-item
       ref="formItemInstance"
       :label="hasLabel ? labelValue : ''"
@@ -42,158 +42,191 @@
         </span>
       </template>
 
-      <template v-if="renderField && isFunction(renderField)">
-        <PlusRender
-          v-if="valueIsReady"
-          :render="renderField"
-          :params="params"
-          :callback-value="state"
-          :custom-field-props="customFieldProps"
-          render-type="form"
-          :handle-change="handleChange"
-        />
+      <!-- 详情模式：纯文本显示 -->
+      <template v-if="detailMode">
+        <div class="plus-form-item-detail-text">
+          <span v-if="state === null || state === undefined || state === ''" class="detail-empty">--</span>
+          <template v-else>
+            <template v-if="renderField && isFunction(renderField)">
+              <PlusRender
+                :render="renderField"
+                :params="params"
+                :callback-value="state"
+                :custom-field-props="customFieldProps"
+                render-type="detail"
+              />
+            </template>
+            <slot
+              v-else-if="$slots[getFieldSlotName(prop)]"
+              :name="getFieldSlotName(prop)"
+              :prop="prop"
+              :label="labelValue"
+              :field-props="customFieldProps"
+              :value-type="valueType"
+              :column="props"
+              :value="state"
+            />
+            <template v-else>
+              {{ getDisplayValue(state, valueType, customOptions.value) }}
+            </template>
+          </template>
+        </div>
       </template>
 
-      <slot
-        v-else-if="$slots[getFieldSlotName(prop)]"
-        :name="getFieldSlotName(prop)"
-        :prop="prop"
-        :label="labelValue"
-        :field-props="customFieldProps"
-        :value-type="valueType"
-        :column="props"
-      ></slot>
-
-      <el-select
-        v-else-if="valueType === 'select' && customFieldProps.multiple === true"
-        ref="fieldInstance"
-        v-model="state"
-        :placeholder="t('plus.field.pleaseSelect') + labelValue"
-        class="plus-form-item-field"
-        clearable
-        v-bind="customFieldProps"
-        @update:model-value="handleChange"
-      >
-        <template v-for="(fieldSlot, key) in fieldSlots" :key="key" #[key]="data">
-          <component :is="fieldSlot" v-bind="data" />
+      <!-- 编辑模式：正常表单 -->
+      <template v-else>
+        <template v-if="renderField && isFunction(renderField)">
+          <PlusRender
+            v-if="valueIsReady"
+            :render="renderField"
+            :params="params"
+            :callback-value="state"
+            :custom-field-props="customFieldProps"
+            render-type="form"
+            :handle-change="handleChange"
+          />
         </template>
 
-        <el-option
-          v-for="item in customOptions"
-          :key="item.label"
-          :label="item.label"
-          :value="item.value"
-          v-bind="item.fieldItemProps"
-        >
-          <template #default>
-            <component :is="item.fieldSlot" v-if="isFunction(item.fieldSlot)" v-bind="item" />
-            <component
-              :is="fieldChildrenSlot"
-              v-else-if="isFunction(fieldChildrenSlot)"
-              v-bind="item"
-            />
-            <template v-else> {{ item.label }} </template>
-          </template>
-        </el-option>
-      </el-select>
+        <slot
+          v-else-if="$slots[getFieldSlotName(prop)]"
+          :name="getFieldSlotName(prop)"
+          :prop="prop"
+          :label="labelValue"
+          :field-props="customFieldProps"
+          :value-type="valueType"
+          :column="props"
+        ></slot>
 
-      <!-- 统一处理 -->
-      <template v-else-if="hasFieldComponent(valueType)">
-        <!-- has-children  -->
-        <component
-          :is="getFieldComponent(valueType).component"
-          v-if="getFieldComponent(valueType).children"
+        <el-select
+          v-else-if="valueType === 'select' && customFieldProps.multiple === true"
           ref="fieldInstance"
           v-model="state"
+          :placeholder="t('plus.field.pleaseSelect') + labelValue"
           class="plus-form-item-field"
           clearable
-          v-bind="commonProps"
+          v-bind="customFieldProps"
           @update:model-value="handleChange"
         >
           <template v-for="(fieldSlot, key) in fieldSlots" :key="key" #[key]="data">
-            <component :is="fieldSlot" :value="state" :column="params" v-bind="data" />
+            <component :is="fieldSlot" v-bind="data" />
           </template>
 
-          <component
-            :is="getFieldComponent(valueType).children"
+          <el-option
             v-for="item in customOptions"
             :key="item.label"
-            v-bind="getChildrenProps(item)"
+            :label="item.label"
+            :value="item.value"
+            v-bind="item.fieldItemProps"
           >
             <template #default>
-              <component
-                :is="item.fieldSlot"
-                v-if="isFunction(item.fieldSlot)"
-                :model-value="state"
-                :column="params"
-                v-bind="item"
-              />
+              <component :is="item.fieldSlot" v-if="isFunction(item.fieldSlot)" v-bind="item" />
               <component
                 :is="fieldChildrenSlot"
                 v-else-if="isFunction(fieldChildrenSlot)"
-                :model-value="state"
-                :column="params"
                 v-bind="item"
               />
               <template v-else> {{ item.label }} </template>
             </template>
+          </el-option>
+        </el-select>
+
+        <!-- 统一处理 -->
+        <template v-else-if="hasFieldComponent(valueType)">
+          <!-- has-children  -->
+          <component
+            :is="getFieldComponent(valueType).component"
+            v-if="getFieldComponent(valueType).children"
+            ref="fieldInstance"
+            v-model="state"
+            class="plus-form-item-field"
+            clearable
+            v-bind="commonProps"
+            @update:model-value="handleChange"
+          >
+            <template v-for="(fieldSlot, key) in fieldSlots" :key="key" #[key]="data">
+              <component :is="fieldSlot" :value="state" :column="params" v-bind="data" />
+            </template>
+
+            <component
+              :is="getFieldComponent(valueType).children"
+              v-for="item in customOptions"
+              :key="item.label"
+              v-bind="getChildrenProps(item)"
+            >
+              <template #default>
+                <component
+                  :is="item.fieldSlot"
+                  v-if="isFunction(item.fieldSlot)"
+                  :model-value="state"
+                  :column="params"
+                  v-bind="item"
+                />
+                <component
+                  :is="fieldChildrenSlot"
+                  v-else-if="isFunction(fieldChildrenSlot)"
+                  :model-value="state"
+                  :column="params"
+                  v-bind="item"
+                />
+                <template v-else> {{ item.label }} </template>
+              </template>
+            </component>
           </component>
-        </component>
-        <!-- no-children  -->
-        <component
-          :is="getFieldComponent(valueType).component"
+          <!-- no-children  -->
+          <component
+            :is="getFieldComponent(valueType).component"
+            v-else
+            ref="fieldInstance"
+            v-model="state"
+            class="plus-form-item-field"
+            clearable
+            :field-children-slot="fieldChildrenSlot"
+            v-bind="commonProps"
+            @update:model-value="handleChange"
+          >
+            <template v-for="(fieldSlot, key) in fieldSlots" :key="key" #[key]="data">
+              <component :is="fieldSlot" :model-value="state" :column="params" v-bind="data" />
+            </template>
+          </component>
+        </template>
+
+        <el-text
+          v-else-if="valueType === 'text'"
+          ref="fieldInstance"
+          class="plus-form-item-field"
+          v-bind="customFieldProps"
+        >
+          {{ state }}
+        </el-text>
+
+        <el-divider
+          v-else-if="valueType === 'divider'"
+          ref="fieldInstance"
+          class="plus-form-item-field"
+          v-bind="customFieldProps"
+        >
+          {{ state }}
+        </el-divider>
+
+        <el-input
           v-else
           ref="fieldInstance"
           v-model="state"
           class="plus-form-item-field"
+          :placeholder="t('plus.field.pleaseEnter') + labelValue"
+          autocomplete="off"
           clearable
-          :field-children-slot="fieldChildrenSlot"
-          v-bind="commonProps"
+          v-bind="customFieldProps"
           @update:model-value="handleChange"
         >
           <template v-for="(fieldSlot, key) in fieldSlots" :key="key" #[key]="data">
             <component :is="fieldSlot" :model-value="state" :column="params" v-bind="data" />
           </template>
-        </component>
+        </el-input>
       </template>
-
-      <el-text
-        v-else-if="valueType === 'text'"
-        ref="fieldInstance"
-        class="plus-form-item-field"
-        v-bind="customFieldProps"
-      >
-        {{ state }}
-      </el-text>
-
-      <el-divider
-        v-else-if="valueType === 'divider'"
-        ref="fieldInstance"
-        class="plus-form-item-field"
-        v-bind="customFieldProps"
-      >
-        {{ state }}
-      </el-divider>
-
-      <el-input
-        v-else
-        ref="fieldInstance"
-        v-model="state"
-        class="plus-form-item-field"
-        :placeholder="t('plus.field.pleaseEnter') + labelValue"
-        autocomplete="off"
-        clearable
-        v-bind="customFieldProps"
-        @update:model-value="handleChange"
-      >
-        <template v-for="(fieldSlot, key) in fieldSlots" :key="key" #[key]="data">
-          <component :is="fieldSlot" :model-value="state" :column="params" v-bind="data" />
-        </template>
-      </el-input>
     </el-form-item>
-  </template>
+  </div>
 </template>
-
 <script lang="ts" setup>
 import type { Component, Ref } from 'vue'
 import { ref, watch, computed, inject } from 'vue'
@@ -249,22 +282,24 @@ const ValueIsNumberList = ['rate', 'input-number', 'slider']
 const ValueIsArrayList = ['checkbox', 'cascader', 'plus-date-picker', 'plus-input-tag', 'transfer']
 import { hasFieldComponent, getFieldComponent } from './form-item'
 import useGetOptions from '@/hooks/component/useGetOptions'
+import { getDisplayValue } from './getDisplayValue'
 const { t } = useI18n()
 export interface PlusFormItemProps {
-  modelValue?: FieldValueType
-  hasLabel?: PlusColumn['hasLabel']
-  label?: PlusColumn['label']
-  prop: PlusColumn['prop']
-  fieldProps?: PlusColumn['fieldProps']
-  valueType?: PlusColumn['valueType']
-  options?: PlusColumn['options']
-  formItemProps?: PlusColumn['formItemProps']
-  renderField?: PlusColumn['renderField']
-  renderLabel?: PlusColumn['renderLabel']
-  tooltip?: PlusColumn['tooltip']
-  fieldSlots?: PlusColumn['fieldSlots']
-  fieldChildrenSlot?: PlusColumn['fieldChildrenSlot']
-  index?: number
+  modelValue?: FieldValueType;
+  hasLabel?: PlusColumn['hasLabel'];
+  label?: PlusColumn['label'];
+  prop: PlusColumn['prop'];
+  fieldProps?: PlusColumn['fieldProps'];
+  valueType?: PlusColumn['valueType'];
+  options?: PlusColumn['options'];
+  formItemProps?: PlusColumn['formItemProps'];
+  renderField?: PlusColumn['renderField'];
+  renderLabel?: PlusColumn['renderLabel'];
+  tooltip?: PlusColumn['tooltip'];
+  fieldSlots?: PlusColumn['fieldSlots'];
+  fieldChildrenSlot?: PlusColumn['fieldChildrenSlot'];
+  index?: number;
+  detailMode?: boolean
 }
 export interface PlusFormItemEmits {
   (e: 'update:modelValue', value: FieldValueType): void
@@ -303,7 +338,8 @@ const props = defineProps({
   tooltip: { type: [String, Boolean], default: '' },
   fieldSlots: { type: Object, default: () => ({}) },
   fieldChildrenSlot: { type: Function, default: undefined },
-  index: { type: Number, default: 0 }
+  index: { type: Number, default: 0 },
+  detailMode: { type: Boolean, default: false }
 })
 const emit = defineEmits<PlusFormItemEmits>()
 

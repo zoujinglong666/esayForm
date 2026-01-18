@@ -1,248 +1,153 @@
-<script setup lang="ts">
-import useForm from '@/components/VForm/src/hooks/useForm.ts'
-import { BasicForm } from '@/components/VForm'
-import {
-  ElAutocomplete, ElCascader,
-  ElCheckbox, ElColorPicker, ElDivider,
-  ElInput,
-  ElLink,
-  ElRadio, ElRate,
-  ElSelect,
-  ElSlider,
-  ElSwitch,
-  ElText,
-  ElTimePicker, ElTimeSelect, ElUpload
-} from "element-plus";
-import InputNumber from "@/components/InputNumber/InputNumber.vue";
-import DateSelect from "@/components/DatePicker/DatePicker.vue";
-import DataSelect from "@/components/DataSelect/DataSelect.vue";
-import TimeSelect from "@/components/TimeSelect/TimeSelect.vue";
-import RadioGroup from "@/components/RadioGroup/RadioGroup.vue";
-import CheckBoxGroup from "@/components/CheckBoxGroup/CheckBoxGroup.vue";
-import ImageUpload from "@/components/ImageUpload/index.vue";
-import DataCheckBox from "@/components/DataCheckbox/DataCheckBox.vue";
-import CheckBoxButton from "@/components/CheckboxButton/CheckboxButton.vue";
-import RadioButton from "@/components/RadioButton/RadioButton.vue";
-import DataInput from "@/components/DataInput/DataInput.vue";
-import {componentMap} from "@/components/VForm/src/componentMap.ts";
-
-const schemas = ref ([
-  {
-    field: 'input',
-    component: 'DataInput',
-    label: 'input',
-    required: true,
-  },
-  {
-    field: 'select',
-    component: 'DataSelect',
-    label: 'Select',
-    componentProps: {
-      options: [{
-        value: '选项1',
-        label: '黄金糕',
-      }, {
-        value: '选项2',
-        label: '双皮奶',
-      }, {
-        value: '选项3',
-        label: '蚵仔煎',
-      }, {
-        value: '选项4',
-        label: '龙须面',
-      }, {
-        value: '选项5',
-        label: '北京烤鸭',
-      }],
-    },
-  },
-  {
-    field: 'timeSelect',
-    component: 'TimeSelect',
-    label: 'TimeSelect',
-  },
-  {
-    field: 'switch',
-    component: 'Switch',
-    label: 'Switch',
-  },
-  {
-    field: 'radio',
-    component: 'RadioGroup',
-    label: 'Radio',
-    componentProps: {
-      options: [{
-        value: '选项1',
-        label: '黄金糕',
-      }, {
-        value: '选项2',
-        label: '双皮奶',
-      }, {
-        value: '选项3',
-        label: '蚵仔煎',
-      }],
-    },
-  },
-  {
-    field: 'checkboxGroup',
-    component: 'CheckBoxGroup',
-    label: 'Checkbox',
-    componentProps: {
-      options: [{
-        value: '选项1',
-        label: '黄金糕',
-      }, {
-        value: '选项2',
-        label: '双皮奶',
-      }, {
-        value: '选项3',
-        label: '蚵仔煎',
-      }],
-    },
-  },
-  {
-    field: 'rate',
-    component: 'Rate',
-    label: 'Rate',
-  },
-  {
-    field: 'slider',
-    component: 'Slider',
-    label: 'Slider',
-  },
-  {
-    field: 'colorInput',
-    component: 'ColorPicker',
-    label: 'colorInput',
-  },
-
-  {
-    field: 'dataCheckbox',
-    component: 'DataCheckBox',
-    label: 'dataCheckbox',
-    componentProps: {
-      options: [{
-        value: '选项1',
-        label: '黄金糕',
-      }, {
-        value: '选项2',
-        label: '双皮奶',
-      }, {
-        value: '选项3',
-        label: '蚵仔煎',
-      }],
-      prop: 'label',
-    },
-  },
-  {
-    field: 'Autocomplete',
-    component: 'Autocomplete',
-    label: 'Autocomplete',
-    componentProps: {
-      options: [{
-        value: '选项1',
-        label: '黄金糕',
-      }, {
-        value: '选项2',
-        label: '双皮奶',
-      }, {
-        value: '选项3',
-        label: '蚵仔煎',
-      }],
-      prop: 'label',
-    },
-  },
-  {
-    field: 'InputNumber',
-    component: 'InputNumber',
-    label: 'InputNumber',
-  },
-
-  {
-    field: 'ImageUpload',
-    component: 'ImageUpload',
-    label: 'ImageUpload',
-    componentProps: {
-      modelValue: 'fileList',
-    }
-  },
-  {
-    field: 'RadioButton',
-    component: 'RadioButton',
-    label: 'RadioButton',
-    componentProps: {
-      options: [{
-        value: '选项1',
-        label: '黄金糕',
-      }, {
-        value: '选项2',
-        label: '双皮奶',
-      }, {
-        value: '选项3',
-        label: '蚵仔煎',
-      }],
-    },
-  },
-  {
-    field: 'CheckBoxButton',
-    component: 'CheckBoxButton',
-    label: 'CheckBoxButton',
-    componentProps: {
-      options: [{
-        value: '选项1',
-        label: '黄金糕',
-      }, {
-        value: '选项2',
-        label: '双皮奶',
-      }, {
-        value: '选项3',
-        label: '蚵仔煎',
-      }],
-    },
-  },
-])
-
-
-
-const { register, methods } = useForm ({
-  schemas: schemas.value,
-})
-
-async function handleGetValue() {
-  const fieldsValue = await methods.getFieldsValue ()
-}
-
-async function setValue() {
-  await methods.setFieldsValue ({
-    price: 1,
-  })
-}
-
-function handleSubmit(val) {
-  console.log (val, 'val')
-}
-
-const pageData = ref ({
-  input: '',
-  select: '选项1',
-  timeSelect: '12:00:00',
-})
-
-function handleFieldValueChange(key,value) {
-  console.log (key, 'fieldValueChange')
-  console.log (value, 'value')
-}
-</script>
-
 <template>
   <div>
-    <PageMain>
-      {{ pageData }}
-      <BasicForm v-model:model="pageData" @register="register" @submit="handleSubmit" @field-value-change="handleFieldValueChange" />
-    </PageMain>
+    <!-- 切换按钮 -->
+    <el-button @click="toggleMode">
+      {{ detailMode ? '切换到编辑模式' : '切换到详情模式' }}
+    </el-button>
+
+    <!-- PlusForm with 详情模式 -->
+    <PlusForm
+      v-model="formData"
+      :columns="columns"
+      :detail-mode="detailMode"
+      label-width="120px"
+      :has-footer="!detailMode"
+    />
   </div>
 </template>
 
-<style lang="scss" scoped>
+<script setup lang="ts">
+import { ref } from 'vue'
+import PlusForm from "@/components/PlusForm/src/index.vue";
 
-</style>
+const detailMode = ref(false)
+
+const formData = ref({
+  name: '张三',
+  age: 28,
+  gender: 'male',
+  department: '技术部',
+  position: '前端工程师',
+  skills: ['Vue.js', 'TypeScript'],
+  birthDate: '1995-05-15',
+  email: 'zhangsan@example.com',
+  phone: '13800138000',
+  status: 1,
+  salary: 15000,
+  joinDate: '2020-03-01',
+  description: '具有5年前端开发经验，熟练掌握Vue.js、React等主流前端框架...'
+})
+
+const columns = [
+  {
+    label: '姓名',
+    prop: 'name',
+    valueType: 'input',
+    formItemProps: {
+      rules: [{ required: true, message: '请输入姓名', trigger: 'blur' }]
+    }
+  },
+  {
+    label: '年龄',
+    prop: 'age',
+    valueType: 'input-number'
+  },
+  {
+    label: '性别',
+    prop: 'gender',
+    valueType: 'radio',
+    options: [
+      { label: '男', value: 'male' },
+      { label: '女', value: 'female' }
+    ]
+  },
+  {
+    label: '部门',
+    prop: 'department',
+    valueType: 'select',
+    options: [
+      { label: '技术部', value: '技术部' },
+      { label: '产品部', value: '产品部' },
+      { label: '运营部', value: '运营部' },
+      { label: '人事部', value: '人事部' }
+    ]
+  },
+  {
+    label: '职位',
+    prop: 'position',
+    valueType: 'input'
+  },
+  {
+    label: '技能标签',
+    prop: 'skills',
+    valueType: 'select',
+    fieldProps: {
+      multiple: true
+    },
+    options: [
+      { label: 'Vue.js', value: 'Vue.js' },
+      { label: 'React', value: 'React' },
+      { label: 'Angular', value: 'Angular' },
+      { label: 'TypeScript', value: 'TypeScript' },
+      { label: 'JavaScript', value: 'JavaScript' },
+      { label: 'Node.js', value: 'Node.js' }
+    ]
+  },
+  {
+    label: '出生日期',
+    prop: 'birthDate',
+    valueType: 'date-picker',
+    fieldProps: {
+      type: 'date'
+    }
+  },
+  {
+    label: '邮箱',
+    prop: 'email',
+    valueType: 'input'
+  },
+  {
+    label: '手机号',
+    prop: 'phone',
+    valueType: 'input'
+  },
+  {
+    label: '状态',
+    prop: 'status',
+    valueType: 'select',
+    options: [
+      { label: '在职', value: 1 },
+      { label: '离职', value: 0 }
+    ]
+  },
+  {
+    label: '薪资',
+    prop: 'salary',
+    valueType: 'input-number',
+    fieldProps: {
+      precision: 2
+    }
+  },
+  {
+    label: '入职日期',
+    prop: 'joinDate',
+    valueType: 'date-picker',
+    fieldProps: {
+      type: 'date'
+    }
+  },
+  {
+    label: '个人简介',
+    prop: 'description',
+    valueType: 'input',
+    fieldProps: {
+      type: 'textarea',
+      rows: 4
+    }
+  }
+]
+
+const toggleMode = () => {
+  detailMode.value = !detailMode.value
+}
+</script>

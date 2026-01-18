@@ -1,10 +1,11 @@
 <template>
   <el-form
     ref="formInstance"
-    :rules="rules"
+    :rules="rules || registerRules"
     :label-width="hasLabel ? labelWidth : 0"
     class="plus-form"
-    :class="hasLabel ? '' : 'no-has-label'"
+    inline
+    :class="hasLabel ? 'no-has-label' : 'no-has-label'"
     :label-position="labelPosition"
     :validate-on-rule-change="false"
     :label-suffix="hasLabel ? labelSuffix : ''"
@@ -13,72 +14,14 @@
     @validate="handleValidate"
   >
     <slot>
-      <!-- 分组表单 -->
-      <template v-if="subGroup">
-        <el-card
-          v-for="groupItem in subGroup"
-          :key="groupItem.title"
-          v-bind="groupItem.cardProps || cardProps"
-          class="plus-form__group__item"
-        >
-          <template #header>
-            <slot
-              name="group-header"
-              :title="groupItem.title"
-              :columns="groupItem.columns"
-              :icon="groupItem.icon"
-            >
-              <div class="plus-form__group__item__icon">
-                <el-icon v-if="groupItem.icon">
-                  <component :is="groupItem.icon" />
-                </el-icon>
-                {{ groupItem.title }}
-              </div>
-            </slot>
-          </template>
-
-          <PlusFormContent
-            v-model="values"
-            :row-props="rowProps"
-            :col-props="colProps"
-            :columns="filterHide(groupItem.columns)"
-            :detail-mode="detailMode"
-            @change="handleChange"
-          >
-            <!--表单项label插槽 -->
-            <template v-for="(_, key) in labelSlots" :key="key" #[key]="data">
-              <slot :name="key" v-bind="data"></slot>
-            </template>
-
-            <!--表单项插槽 -->
-            <template v-for="(_, key) in fieldSlots" :key="key" #[key]="data">
-              <slot :name="key" v-bind="data"></slot>
-            </template>
-
-            <!--el-PlusFormItem 下一行额外的内容 的插槽 -->
-            <template v-for="(_, key) in extraSlots" :key="key" #[key]="data">
-              <slot :name="key" v-bind="data"></slot>
-            </template>
-
-            <!--表单tooltip插槽 -->
-            <template v-if="$slots['tooltip-icon']" #tooltip-icon>
-              <slot name="tooltip-icon"></slot>
-            </template>
-          </PlusFormContent>
-        </el-card>
-      </template>
-
       <!-- 普通表单 -->
-      <template v-else>
-          <PlusFormContent
-            v-model="values"
-            :row-props="rowProps"
-            :col-props="colProps"
-            :columns="subColumns"
-            :has-label="hasLabel"
-            :detail-mode="detailMode"
-            @change="handleChange"
-          >
+        <CustomFormContent
+          v-model="values"
+          :col-props="colProps"
+          :columns="subColumns"
+          :has-label="hasLabel"
+          @change="handleChange"
+        >
           <!--表单项label插槽 -->
           <template v-for="(_, key) in labelSlots" :key="key" #[key]="data">
             <slot :name="key" v-bind="data"></slot>
@@ -103,19 +46,20 @@
           <template v-if="$slots['tooltip-icon']" #tooltip-icon>
             <slot name="tooltip-icon"></slot>
           </template>
-        </PlusFormContent>
-      </template>
+        </CustomFormContent>
     </slot>
 
-        <div v-if="hasFooter && !detailMode" class="plus-form__footer" :style="style">
+    <div v-if="hasFooter" class="plus-form__footer" :style="style">
       <slot name="footer" v-bind="{ handleReset, handleSubmit }">
-        <el-button v-if="hasReset" @click="handleReset">
-          <!-- 重置 -->
-          {{ resetText || t('plus.form.resetText') }}
-        </el-button>
         <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
           <!-- 提交 -->
+          <Icon icon="ep:search" />
           {{ submitText || t('plus.form.submitText') }}
+        </el-button>
+        <el-button v-if="hasReset" @click="handleReset">
+          <!-- 重置 -->
+          <Icon icon="ep:refresh" />
+          {{ resetText || t('plus.form.resetText') }}
         </el-button>
       </slot>
     </div>
@@ -134,13 +78,9 @@ import {
   filterSlots
 } from '@/components/PlusTable/utils'
 import { isArray, isPlainObject, isFunction } from '@/utils/is'
-import {useI18n} from '@/hooks/web/useI18n'
-import PlusFormContent from './form-content.vue'
-defineOptions({
-  name: 'PlusForm',
-  inheritAttrs: false
-})
-
+import CustomFormContent from '@/components/PlusQuery/src/custom-form-content.vue'
+import {useI18n} from "@/hooks/web/useI18n.ts";
+const collapseState = reactive<Record<string, boolean>>({})
 const props = defineProps({
   modelValue: {
     type: Object,
@@ -152,17 +92,14 @@ const props = defineProps({
     default: () => ({})
   },
   labelWidth: {
-    type: String,
-    default: '80px'
-  },
-  labelPosition: {
-    type: String,
-    default: 'right'
-  },
-  rowProps: {
-    type: Object,
-    default: () => ({})
-  },
+      type: String,
+      default: '110px'
+    },
+    labelPosition: {
+      type: String,
+      default: 'right'
+    },
+
   colProps: {
     type: Object,
     default: () => ({})
@@ -193,11 +130,11 @@ const props = defineProps({
   },
   submitText: {
     type: String,
-    default: ''
+    default: '查询'
   },
   resetText: {
     type: String,
-    default: ''
+    default: '重置'
   },
   footerAlign: {
     type: String,
@@ -211,19 +148,11 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
-  group: {
-    type: [Boolean, Array],
-    default: false
-  },
   cardProps: {
     type: Object,
     default: () => ({})
   },
   prevent: {
-    type: Boolean,
-    default: false
-  },
-  detailMode: {
     type: Boolean,
     default: false
   }
@@ -255,27 +184,22 @@ const style = computed(() => ({
         : 'flex-end'
 }))
 const subColumns = computed(() => filterHide(props.columns))
-const subGroup = computed(() =>
-  isArray(props.group)
-    ? props.group?.filter((item) => unref(item.hideInGroup) !== true)
-    : props.group
-)
+
 
 const originAttrs = useAttrs()
 const attrs = computed(() => ({
   ...originAttrs,
   ...(props.prevent
     ? {
-        onSubmit: withModifiers(
-          (...arg: any[]) => {
-            if (originAttrs?.onSubmit && isFunction(originAttrs?.onSubmit)) {
-              // eslint-disable-next-line @typescript-eslint/no-extra-semi
-              ;(originAttrs.onSubmit as any)(...arg)
-            }
-          },
-          ['prevent']
-        )
-      }
+      onSubmit: withModifiers(
+        (...arg: any[]) => {
+          if (originAttrs?.onSubmit && isFunction(originAttrs?.onSubmit)) {
+            ;(originAttrs.onSubmit as any)(...arg)
+          }
+        },
+        ['prevent']
+      )
+    }
     : {})
 }))
 
@@ -319,6 +243,7 @@ const handleSubmit = async () => {
     const valid = await formInstance.value?.validate()
     if (valid) {
       emit('submit', values.value)
+      console.log('submit', values.value)
       return true
     }
   } catch (errors: unknown) {
@@ -334,6 +259,44 @@ const handleSubmit = async () => {
   return false
 }
 
+// 清空校验
+const registerRules = ref({})
+const createFormRules = (value: PlusColumn[]) => {
+  const columns =
+    value?.map((item) => {
+      // 如果存在规则且没有设置为必填，则设置为必填
+      if (item.rules && !item.required) {
+        item.required = true
+      }
+      // 如果是必填但没有定义规则，则设置默认的规则
+      if (item.required && !item.rules) {
+        item.rules = [{ required: true, message: `${item.label}不能为空` }]
+      }
+
+      return item
+    }) || [] // 确保即使 value 为 undefined 也能返回空数组
+  registerRules.value = columns
+    .filter((item) => item.rules?.length > 0) // 只保留有规则的列
+    .reduce((acc, cur) => {
+      acc[cur.prop] = cur.rules
+      return acc
+    }, {})
+}
+
+watch(
+  () => subColumns.value,
+  (value) => {
+    if (value.length) {
+      createFormRules(value)
+    }
+  },
+  {
+    immediate: true
+  }
+)
+const validate = () => {
+  formInstance.value?.validate()
+}
 const handleReset = (): void => {
   clearValidate()
   values.value = { ...props.defaultValues }
@@ -345,10 +308,35 @@ const handleValidate = (...args: any[]): void => {
   emit('validate', ...args)
 }
 
+onUnmounted(() => {
+  formInstance.value = null
+  values.value = {}
+})
+
 defineExpose({
   formInstance,
+  values,
+  clearValidate,
+  validate,
   handleSubmit,
   handleReset
 })
 </script>
+<style lang="scss" scoped>
 
+
+.plus-form__group__item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
+.plus-form__group__item__toggle {
+  transition: transform 0.3s ease;
+}
+
+.plus-form__group__item__toggle.collapsed {
+  transform: rotate(-180deg);
+}
+</style>

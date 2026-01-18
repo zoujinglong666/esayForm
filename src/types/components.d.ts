@@ -7,6 +7,7 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
+    ApiComponent: typeof import('./../components/ApiComponent/index.vue')['default']
     Auth: typeof import('./../components/Auth/index.vue')['default']
     AuthAll: typeof import('./../components/AuthAll/index.vue')['default']
     BasicArrow: typeof import('./../components/Basic/src/BasicArrow.vue')['default']
@@ -15,6 +16,8 @@ declare module 'vue' {
     BasicTitle: typeof import('./../components/Basic/src/BasicTitle.vue')['default']
     CheckboxButton: typeof import('./../components/CheckboxButton/CheckboxButton.vue')['default']
     CheckBoxGroup: typeof import('./../components/CheckBoxGroup/CheckBoxGroup.vue')['default']
+    CustomFormContent: typeof import('./../components/PlusQuery/src/custom-form-content.vue')['default']
+    CustomFormItem: typeof import('./../components/PlusQuery/src/CustomFormItem.vue')['default']
     DataCascader: typeof import('./../components/DataCascader/DataCascader.vue')['default']
     DataCheckBox: typeof import('./../components/DataCheckbox/DataCheckBox.vue')['default']
     DataDialog: typeof import('./../components/DataDialog/DataDialog.vue')['default']
@@ -25,7 +28,7 @@ declare module 'vue' {
     FixedActionBar: typeof import('./../components/FixedActionBar/index.vue')['default']
     FormAction: typeof import('./../components/VForm/src/components/FormAction.vue')['default']
     FormContent: typeof import('./../components/PlusForm/src/form-content.vue')['default']
-    FormItem: typeof import('./../components/VForm/src/components/FormItem.vue')['default']
+    FormItem: typeof import('./../components/ProForm/FormItem.vue')['default']
     HButton: typeof import('./../layouts/ui-kit/HButton.vue')['default']
     HCheckList: typeof import('./../layouts/ui-kit/HCheckList.vue')['default']
     HDialog: typeof import('./../layouts/ui-kit/HDialog.vue')['default']
@@ -43,10 +46,12 @@ declare module 'vue' {
     ImagesUpload: typeof import('./../components/ImagesUpload/index.vue')['default']
     ImageUpload: typeof import('./../components/ImageUpload/index.vue')['default']
     InputNumber: typeof import('./../components/InputNumber/InputNumber.vue')['default']
+    LoaderCircle: typeof import('./../components/LoaderCircle/index.vue')['default']
     NotAllowed: typeof import('./../components/NotAllowed/index.vue')['default']
     PageHeader: typeof import('./../components/PageHeader/index.vue')['default']
     PageMain: typeof import('./../components/PageMain/index.vue')['default']
     PcasCascader: typeof import('./../components/PcasCascader/index.vue')['default']
+    ProForm: typeof import('./../components/ProForm/index.vue')['default']
     RadioButton: typeof import('./../components/RadioButton/RadioButton.vue')['default']
     RadioGroup: typeof import('./../components/RadioGroup/RadioGroup.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

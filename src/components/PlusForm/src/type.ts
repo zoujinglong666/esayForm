@@ -113,6 +113,11 @@ export type PlusFormSelfProps = {
    * @version v0.1.12
    */
   prevent?: boolean
+  /**
+   * @desc 详情模式，只读显示表单内容
+   * @version v0.1.13
+   */
+  detailMode?: boolean
 }
 
 export type PlusFormProps = PlusFormSelfProps & Partial<ElementPlusFormProps> & RecordType

@@ -1,12 +1,13 @@
 <template>
   <el-row v-bind="rowProps" class="plus-form__row">
     <el-col v-for="item in columns" :key="item.prop" v-bind="item.colProps || colProps">
-      <PlusFormItem
-        :model-value="getModelValue(item.prop)"
-        v-bind="item"
-        :has-label="getHasLabel(item.hasLabel)"
-        @change="(value) => handleChange(value, item)"
-      >
+        <PlusFormItem
+          :model-value="getModelValue(item.prop)"
+          v-bind="item"
+          :has-label="getHasLabel(item.hasLabel)"
+          :detail-mode="detailMode"
+          @change="(value) => handleChange(value, item)"
+        >
         <!--表单项label插槽 -->
         <template v-if="$slots[getLabelSlotName(item.prop)]" #[getLabelSlotName(item.prop)]="data">
           <slot :name="getLabelSlotName(item.prop)" v-bind="data"></slot>
@@ -63,11 +64,12 @@ import {
 } from '@/components/PlusTable/utils'
 import { isFunction, isBoolean } from '@/utils/is'
 export interface PlusFormContentProps {
-  modelValue?: FieldValues
-  hasLabel?: boolean
-  columns?: PlusColumn[]
-  rowProps?: Partial<Mutable<RowProps>>
-  colProps?: Partial<Mutable<ColProps>>
+  modelValue?: FieldValues;
+  hasLabel?: boolean;
+  columns?: PlusColumn[];
+  rowProps?: Partial<Mutable<RowProps>>;
+  colProps?: Partial<Mutable<ColProps>>;
+  detailMode?: boolean
 }
 
 export interface PlusFormContentEmits {
@@ -99,6 +101,10 @@ const props = defineProps({
   columns: {
     type: Array as PropType<PlusColumn[]>,
     default: () => []
+  },
+  detailMode: {
+    type: Boolean,
+    default: false
   }
 })
 const emit = defineEmits<PlusFormContentEmits>()

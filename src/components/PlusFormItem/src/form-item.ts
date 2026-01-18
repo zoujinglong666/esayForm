@@ -17,11 +17,12 @@ import {
   ElTimeSelect,
   ElInput,
   ElTransfer,
-  ElTreeSelect
+  ElTreeSelect, ElSelectV2
 } from 'element-plus'
 import type { FormItemValueType } from '@/components/PlusTable/types'
 import type { Component } from 'vue'
 import InputTag from '@/components/PlusInputTag/src/index.vue'
+import ApiComponent from "@/components/ApiComponent/index.vue";
 
 export type FieldComponentType = {
   /**
@@ -66,6 +67,69 @@ export type FieldComponentMapType = Record<
   FieldComponentType
 >
 
+const withDefaultPlaceholder = <T extends Component>(
+  component: T,
+  type: 'input' | 'select',
+  componentProps: Recordable<any> = {},
+) => {
+  return defineComponent({
+    name: component.name,
+    inheritAttrs: false,
+    setup: (props: any, { attrs, expose, slots }) => {
+      const placeholder =
+        props?.placeholder ||
+        attrs?.placeholder
+      // 透传组件暴露的方法
+      const innerRef = ref();
+      expose(
+        new Proxy(
+          {},
+          {
+            get: (_target, key) => innerRef.value?.[key],
+            has: (_target, key) => key in (innerRef.value || {}),
+          },
+        ),
+      );
+      return () =>
+        h(
+          component,
+          { ...componentProps, placeholder, ...props, ...attrs, ref: innerRef },
+          slots,
+        );
+    },
+  });
+};
+
+const ApiSelect=withDefaultPlaceholder(
+  {
+    ...ApiComponent,
+    name: 'ApiSelect',
+  },
+  'select',
+  {
+    component: ElSelectV2,
+    loadingSlot: 'loading',
+    visibleEvent: 'onVisibleChange',
+  },
+)
+
+
+const ApiTreeSelect=withDefaultPlaceholder(
+  {
+    ...ApiComponent,
+    name: 'ApiTreeSelect',
+  },
+  'select',
+  {
+    component: ElTreeSelect,
+    props: { label: 'label', children: 'children' },
+    nodeKey: 'value',
+    loadingSlot: 'loading',
+    optionsPropName: 'data',
+    visibleEvent: 'onVisibleChange',
+  },
+)
+// @ts-ignore
 export const FieldComponentMap: FieldComponentMapType = {
   // plus
   'plus-radio': {
@@ -144,8 +208,19 @@ export const FieldComponentMap: FieldComponentMapType = {
   },
   'tree-select': {
     component: ElTreeSelect
-  }
+  },
+  'api-select':{
+    component: ApiSelect
+  },
+
+  'api-tree-select':{
+    component: ApiTreeSelect
+  },
+
 }
+
+
+
 
 /**
  * has component

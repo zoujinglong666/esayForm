@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useRuleFormItem } from '@/hooks/component/useFormItem.ts'
-
 const props = defineProps({
   modelValue: {
     type: [Number, String],
@@ -13,7 +12,6 @@ const props = defineProps({
 })
 const emits = defineEmits(['input'])
 const emitData = ref('')
-// Embedded in the form, just use the hook binding to perform form verification
 const [state] = useRuleFormItem(props, 'modelValue', 'input', emitData)
 function handleChange(val) {
   if (val === undefined || val === null)

@@ -15,14 +15,16 @@ const valueCom = computed({
     return props.modelValue
   },
   set(val) {
-    emits('update:modelValue', val)
+    emits('update:modelValue', val.map((item) => item.value))
   },
 })
 function handleChange(val) {
-  if (val === undefined || val === null)
+  if (val === undefined || val === null){
     emits('update:modelValue', [])
-
-  emits('update:modelValue', val)
+    return
+  }
+  console.log(val, 'handleChange')
+  emits('update:modelValue', val.map((item) => item.value))
 }
 </script>
 

@@ -74,7 +74,6 @@ const useGetOptions = (
     optionsIsReady.value = true
     throwError(props.options)
   }
-
   return { customOptions: options, customOptionsIsReady: optionsIsReady }
 }
 export default useGetOptions

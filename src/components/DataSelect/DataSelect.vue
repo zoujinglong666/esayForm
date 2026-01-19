@@ -14,8 +14,6 @@ const props = withDefaults (defineProps<DataSelectPropsType> (), {
   multiple: false,
   remote: false,
   label: '',
-  maxCollapseTags: 3,
-  multipleLimit: 3,
 })
 const emits = defineEmits (['update:modelValue', 'change', 'clear', 'update:label', 'blur', 'focus'])
 const selectData = ref ([])

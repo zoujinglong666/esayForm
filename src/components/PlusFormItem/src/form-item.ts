@@ -23,7 +23,7 @@ import type { FormItemValueType } from '@/components/PlusTable/types'
 import type { Component } from 'vue'
 import InputTag from '@/components/PlusInputTag/src/index.vue'
 import ApiComponent from "@/components/ApiComponent/index.vue";
-
+import DataSelect from "@/components/DataSelect/DataSelect.vue";
 export type FieldComponentType = {
   /**
    * parent Component
@@ -211,6 +211,9 @@ export const FieldComponentMap: FieldComponentMapType = {
   },
   'api-select':{
     component: ApiSelect
+  },
+  'data-select': {
+    component: DataSelect
   },
 
   'api-tree-select':{

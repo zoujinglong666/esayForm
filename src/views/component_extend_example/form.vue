@@ -1,12 +1,23 @@
 <template>
-  <div>
     <!-- 切换按钮 -->
+
+
+  <div>
     <el-button @click="toggleMode">
       {{ detailMode ? '切换到编辑模式' : '切换到详情模式' }}
     </el-button>
-
+    <!-- 只在编辑模式下显示校验按钮 -->
+    <el-button
+      v-if="!detailMode"
+      type="primary"
+      plain
+      @click="handleValidate"
+    >
+      校验表单
+    </el-button>
     <!-- PlusForm with 详情模式 -->
     <PlusForm
+      ref="plusFormRef"
       v-model="formData"
       :columns="columns"
       :detail-mode="detailMode"
@@ -14,6 +25,7 @@
       :has-footer="!detailMode"
     />
   </div>
+
 </template>
 
 <script setup lang="ts">
@@ -81,18 +93,19 @@ const columns = [
   {
     label: '技能标签',
     prop: 'skills',
-    valueType: 'select',
+    valueType: 'data-select',
     fieldProps: {
-      multiple: true
+      multiple: true , options: [
+        { label: 'Vue.js', value: 'Vue.js' },
+        { label: 'React', value: 'React' },
+        { label: 'Angular', value: 'Angular' },
+        { label: 'TypeScript', value: 'TypeScript' },
+        { label: 'JavaScript', value: 'JavaScript' },
+        { label: 'Node.js', value: 'Node.js' }
+      ]
+
     },
-    options: [
-      { label: 'Vue.js', value: 'Vue.js' },
-      { label: 'React', value: 'React' },
-      { label: 'Angular', value: 'Angular' },
-      { label: 'TypeScript', value: 'TypeScript' },
-      { label: 'JavaScript', value: 'JavaScript' },
-      { label: 'Node.js', value: 'Node.js' }
-    ]
+
   },
   {
     label: '出生日期',
@@ -147,7 +160,19 @@ const columns = [
     }
   }
 ]
-
+const plusFormRef = ref(null)
+const handleValidate = () => {
+  plusFormRef.value?.formInstance.validate((valid: boolean) => {
+    if (valid) {
+      console.log('✅ 表单校验通过')
+      // 可弹出提示
+      // ElMessage.success('表单校验通过')
+    } else {
+      console.log('❌ 表单校验失败')
+      // ElMessage.error('请检查表单输入')
+    }
+  })
+}
 const toggleMode = () => {
   detailMode.value = !detailMode.value
 }

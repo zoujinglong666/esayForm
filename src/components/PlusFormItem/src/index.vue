@@ -1,6 +1,7 @@
 <template>
   <div v-if="valueIsReady">
     <el-form-item
+      :label-for="fieldId"
       ref="formItemInstance"
       :label="hasLabel ? labelValue : ''"
       :prop="detailMode ? undefined : prop"
@@ -200,7 +201,7 @@
         <div class="plus-form-item-detail-text">
           <span v-if="state == null || state === ''" class="detail-empty">--</span>
           <template v-else>
-            {{ getDisplayValue(state, valueType, customOptions.value) }}
+            {{ getDisplayValue(state, valueType, customOptions) }}
           </template>
         </div>
       </template>
@@ -239,7 +240,9 @@ import {
   ElSelect as SelectComponent,
   ElOption as OptionComponent
 } from 'element-plus'
-
+const fieldId = computed(() => {
+  return props.prop?.replace(/[^a-zA-Z0-9-_:.]/g, '_') || `plus_field_${Date.now()}`
+})
 const DatePickerValueIsArrayList = ['datetimerange', 'daterange', 'monthrange']
 
 /**

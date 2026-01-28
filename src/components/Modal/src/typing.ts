@@ -1,4 +1,4 @@
-import type { ButtonProps } from 'ant-design-vue/lib/button/buttonTypes'
+import type { VButtonOptions } from '@/components/VForm/src/types/form'
 import type { CSSProperties, ComputedRef, VNodeChild } from 'vue'
 
 /**

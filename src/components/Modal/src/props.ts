@@ -1,5 +1,5 @@
 import type { CSSProperties, PropType } from 'vue'
-import type { ButtonProps } from 'ant-design-vue/es/button/buttonTypes'
+import type { VButtonOptions } from '@/components/VForm/src/types/form'
 import type { ModalWrapperProps } from './typing'
 import { useI18n } from '@/hooks/web/useI18n'
 

@@ -2,7 +2,7 @@ import type { ElTooltipProps, ButtonType } from 'element-plus'
 import type { VNode, Ref, ComputedRef, Component } from 'vue'
 import type { RecordType } from './global'
 import type { TableValueType, TableColumnProps } from './table'
-import type { FormItemValueType, FormColumnProps, FieldValueType } from './form'
+import type { FormItemValueType, FormColumnProps, FieldValueType, FieldValues } from './form'
 
 export {}
 
@@ -243,9 +243,34 @@ export interface CommonType {
   order?: number | ComputedRef<number>
 }
 
+export type PlusQueryLinkageContext = {
+  values: FieldValues
+  column: PlusColumn
+  prop: string
+  value: FieldValueType
+  get: (prop: string) => FieldValueType
+  set: (prop: string, value: FieldValueType) => void
+  clearValidate: (props?: string | string[]) => void
+  refreshOptions: (prop: string) => Promise<OptionsRow[]>
+  validate: (props?: string | string[]) => Promise<boolean>
+}
+
+export type PlusQueryLinkage = (ctx: PlusQueryLinkageContext) => void | Promise<void>
+
 /**
  * 表格，表单，详情，搜索公共的类型
  */
 export interface PlusColumn extends CommonType, TableColumnProps, FormColumnProps {
-  /** */
+  linkage?: PlusQueryLinkage
+  showInQuery?: boolean | ((values: FieldValues) => boolean)
+  isControlField?: boolean
+  realKeys?: string[]
+  children?: {
+    prop: string
+    defaultValue?: any
+    isPlaceholder?: boolean
+    parentProp?: string
+  }
+  linkageTrigger?: 'change' | 'init' | Array<'change' | 'init'>
+  autoTriggerSearch?: boolean
 }

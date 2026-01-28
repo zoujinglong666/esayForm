@@ -1,0 +1,1005 @@
+<script lang="ts" name="EditableTableV2" setup>
+import type { Component, ComponentPublicInstance, VNode } from 'vue'
+import { computed, h, markRaw, nextTick, onMounted, onUnmounted, reactive, ref, shallowRef, useSlots } from 'vue'
+import {
+  ElDatePicker,
+  ElInput,
+  ElInputNumber,
+  ElOption,
+  ElSelect,
+  ElSwitch,
+  ElTableV2,
+  ElTooltip
+} from 'element-plus'
+import type {
+  CellChangeEvent,
+  EditableColumn,
+  EditEndEvent,
+  EditStartEvent,
+  ValidateErrorEvent
+} from '../types'
+
+interface EditableTableV2Props {
+  modelValue: Array<Record<string, any>>;
+  columns: EditableColumn[];
+  editable?: boolean;
+  border?: boolean;
+  height?: string | number;
+  maxHeight?: string | number;
+  stripe?: boolean;
+  size?: 'large' | 'default' | 'small';
+  showOverflowTooltip?: boolean;
+  rowKey?: string;
+  validateOnInput?: boolean;
+  clickOutsideToSave?: boolean;
+  showIndex?: boolean;
+  alwaysEditable?: boolean;
+  fixedWidth?: number | 'auto' // el-table-v2 需要固定宽度
+}
+
+const props = withDefaults(defineProps<EditableTableV2Props>(), {
+  editable: true,
+  border: true,
+  stripe: false,
+  size: 'default',
+  showOverflowTooltip: true,
+  validateOnInput: true,
+  clickOutsideToSave: true,
+  showIndex: false,
+  alwaysEditable: false,
+  fixedWidth: 120
+})
+
+const emit = defineEmits({
+  'update:modelValue': (data: Array<Record<string, any>>) => void,
+  'cell-change': (event: CellChangeEvent) => void,
+  'validate-error': (event: ValidateErrorEvent) => void,
+  'edit-start': (event: EditStartEvent) => void,
+  'edit-end': (event: EditEndEvent) => void
+})
+
+const tableRef = ref<InstanceType<typeof ElTableV2>>()
+const editingCell = ref<{ rowIndex: number; prop: string } | null>(null)
+
+// 优化: cellErrors 改用 shallowRef 避免全表重渲染
+const cellErrors = shallowRef(new Map<string, string[]>())
+const validateQueue = shallowRef(new Map<string, number>()) // 校验队列
+
+// 修复: 定时器清理集合
+const activeTimeouts = new Set<ReturnType<typeof setTimeout>>()
+
+// 优化: 使用缓存的可编辑列 Set
+const editableColumnsCache = computed(() => {
+  return new Set(props.columns.filter((c) => c.editable).map((c) => c.prop))
+})
+
+// 计算每个单元格的唯一key
+const getCellKey = (rowIndex: number, prop: string) => `${rowIndex}-${prop}`
+
+// 列级可编辑列集合
+const editableColumnsSet = editableColumnsCache
+
+// alwaysEditable 分支判断
+const isAlwaysEditable = computed(() => props.alwaysEditable && props.editable)
+
+const shouldRenderEditor = (prop: string) => {
+  return props.editable && editableColumnsSet.value.has(prop)
+}
+
+// 修复: 使用 rowKey 获取行唯一标识
+const getRowId = (row: Record<string, any>, index: number): string => {
+  if (props.rowKey && row[props.rowKey] !== undefined) {
+    return String(row[props.rowKey])
+  }
+  // 备用: 使用索引(仅兼容,不推荐)
+  return `__row_${index}`
+}
+
+// 优化: 缓存可编辑列列表,避免重复 filter
+const editableColumnsList = computed(() => {
+  return props.columns.filter((col) => col.editable)
+})
+
+// 编辑器组件映射
+const editorComponents = ref<Record<string, Component>>({
+  input: markRaw(ElInput),
+  number: markRaw(ElInputNumber),
+  select: markRaw(ElSelect),
+  date: markRaw(ElDatePicker),
+  datetime: markRaw(ElDatePicker),
+  switch: markRaw(ElSwitch),
+  textarea: markRaw(ElInput)
+})
+
+// 获取编辑器组件
+const getEditorComponent = (editType: string): Component | null => {
+  return editorComponents.value[editType] || null
+}
+
+// 注册新的编辑器组件
+const registerEditor = (editType: string, component: Component) => {
+  editorComponents.value[editType] = markRaw(component)
+}
+
+// 获取编辑器默认属性
+const getEditorDefaultProps = (editType: string) => {
+  switch (editType) {
+    case 'date':
+      return { type: 'date' }
+    case 'datetime':
+      return { type: 'datetime' }
+    case 'textarea':
+      return { type: 'textarea' }
+    case 'select':
+      return {}
+    default:
+      return {}
+  }
+}
+
+// 开始编辑
+const startEdit = (rowIndex: number, prop: string) => {
+  if (!props.editable) return
+
+  const column = props.columns.find((col) => col.prop === prop)
+  if (!column?.editable) return
+
+  // 如果是 alwaysEditable 模式,不需要设置编辑状态,因为已经是编辑态了
+  if (isAlwaysEditable.value) {
+    emit('edit-start', { row: props.modelValue[rowIndex], prop, index: rowIndex })
+    return
+  }
+
+  // 先清空当前编辑状态
+  editingCell.value = null
+
+  // 使用 nextTick 确保状态更新后再设置新的编辑状态
+  nextTick(() => {
+    editingCell.value = { rowIndex, prop }
+    emit('edit-start', { row: props.modelValue[rowIndex], prop, index: rowIndex })
+
+    // 聚焦到输入框
+    nextTick(() => {
+      const inputRef = getInputRef(props.modelValue[rowIndex], rowIndex, prop)
+      if (inputRef?.focus) {
+        inputRef.focus()
+      } else if (inputRef?.$el?.querySelector) {
+        const inputEl = inputRef.$el.querySelector('input')
+        inputEl?.focus()
+      }
+    })
+  })
+}
+
+// 结束编辑
+const endEdit = (action: 'save' | 'cancel' = 'save') => {
+  if (!editingCell.value) return
+  if (isAlwaysEditable.value) return // alwaysEditable 模式不结束编辑
+
+  const { rowIndex, prop } = editingCell.value
+  emit('edit-end', { row: props.modelValue[rowIndex], prop, index: rowIndex, action })
+
+  editingCell.value = null
+}
+
+// 取消编辑
+const cancelEdit = () => {
+  endEdit('cancel')
+}
+
+// 保存并移动到下一个单元格
+const saveAndMoveNext = () => {
+  if (!editingCell.value) return
+
+  const { rowIndex, prop } = editingCell.value
+  const editableColumns = props.columns.filter((col) => col.editable)
+  const currentColumnIndex = editableColumns.findIndex((col) => col.prop === prop)
+
+  if (currentColumnIndex !== -1) {
+    const nextColumn = editableColumns[currentColumnIndex + 1]
+    if (nextColumn) {
+      // 同一行下一个可编辑列
+      endEdit('save')
+      nextTick(() => {
+        startEdit(rowIndex, nextColumn.prop)
+      })
+    } else {
+      // 下一行的第一个可编辑列
+      const nextRowIndex = rowIndex + 1
+      if (nextRowIndex < props.modelValue.length) {
+        endEdit('save')
+        nextTick(() => {
+          startEdit(nextRowIndex, editableColumns[0].prop)
+        })
+      } else {
+        endEdit('save')
+      }
+    }
+  }
+}
+
+// 单元格值变化处理 - 使用触发式更新减少重渲染
+const handleCellChange = (row: Record<string, any>, prop: string, value: any, rowIndex: number) => {
+  const oldValue = row[prop]
+  if (oldValue !== value) {
+    // 优化: 使用 markRaw 包裹数据,避免深层响应式
+    const newRow = { ...row, [prop]: valueproppropproppropprop }
+
+    // 优化: 批量更新数据,减少触发次数
+    const newData = [...props.modelValue]
+    newData[rowIndex] = newRow
+    emit('update:modelValue', newData)
+
+    // 触发事件
+    emit('cell-change', { row: newRow, prop, oldValue, newValue: value, index: rowIndex })
+
+    // 如果需要实时校验
+    if (props.validateOnInput) {
+      validateCell(newRow, prop, rowIndex)
+    }
+  }
+}
+
+// 优化: 缓存列配置,避免重复 find
+const columnsCache = computed(() => {
+  return props.columns.reduce((acc, col) => {
+    acc[col.prop] = col
+    return acc
+  }, {} as Record<string, EditableColumn>)
+})
+
+// 优化: 校验单个单元格 - 使用 requestAnimationFrame 防抖
+const doValidateCell = (row: Record<string, any>, prop: string, rowIndex: number) => {
+  const column = columnsCache.value[prop]
+  if (!column?.rules || column.rules.length === 0) {
+    const map = cellErrors.value
+    map.delete(getCellKey(rowIndex, prop))
+    // 优化: 直接修改 Map 而不是创建新 Map
+    cellErrors.value = map
+    return truemapcellErrors.valuemap.deletegetCellKeymapcellErrors.valuemap.deletegetCellKeymapcellErrors.valuemap.deletegetCellKeymapcellErrors.valuemap.deletegetCellKeymapcellErrors.valuemap.deletegetCellKey
+  }
+
+  const errors: string[] = []
+  const value = row[prop]
+
+  for (const rule of column.rules) {
+    // 必填校验
+    if (rule.required && (value === undefined || value === null || value === '')) {
+      errors.push(rule.message || `${column.label}不能为空`)
+      continue
+    }
+
+    // 触发器校验
+    if (rule.validator) {
+      try {
+        rule.validator(rule, value, (error?: string | Error) => {
+          if (error) {
+            errors.push(typeof error === 'string' ? error : error.message)
+          }
+        })
+      } catch (err) {
+        errors.push((err as Error).message)
+      }
+    }
+
+    // 其他校验规则
+    if (rule.min !== undefined && value !== undefined && value !== null && value < rule.min) {
+      errors.push(`${column.label}不能小于${rule.min}`)
+    }
+    if (rule.max !== undefined && value !== undefined && value !== null && value > rule.max) {
+      errors.push(`${column.label}不能大于${rule.max}`)
+    }
+  }
+
+  const cellKey = getCellKey(rowIndex, prop)
+  const map = cellErrors.value
+  if (errors.length > 0) {
+    map.set(cellKey, errors)
+    // 优化: 直接修改 Map
+    cellErrors.value = map
+    emit('validate-error', { row, prop, errors, index: rowIndex })
+    return false
+  } else {
+    map.delete(cellKey)
+    // 优化: 直接修改 Map
+    cellErrors.value = map
+    return true
+  }
+}
+
+const scheduleValidate = (key: string, fn: () => void) => {
+  const queue = validateQueue.value
+  const existingId = queue.get(key)
+  if (existingId) {
+    cancelAnimationFrame(existingId)
+  }
+  const id = requestAnimationFrame(fn)
+  queue.set(key, id)
+}
+
+// 修复: 同步检查单元格是否有效(不触发新校验)
+const isCellValidSync = (rowIndex: number, prop: string): boolean => {
+  return !cellErrors.value.has(getCellKey(rowIndex, prop))
+}
+
+// 修复: 异步触发校验并返回 Promise
+const validateCellAsync = (row: Record<string, any>, prop: string, rowIndex: number): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const cellKey = getCellKey(rowIndex, prop)
+    scheduleValidate(cellKey, () => {
+      const isValid = doValidateCell(row, prop, rowIndex)
+      resolve(isValid)
+    })
+  })
+}
+
+// 原 validateCell 保留为 fire-and-forget(用于 input 事件)
+const validateCell = (row: Record<string, any>, prop: string, rowIndex: number) => {
+  validateCellAsync(row, prop, rowIndex)
+}
+
+// 获取单元格错误
+const getCellErrors = (rowIndex: number, prop: string) => {
+  return cellErrors.value.get(getCellKey(rowIndex, prop))
+}
+
+// 缓存键盘事件处理逻辑
+const handleKeyDown = (e: KeyboardEvent, rowIndex: number, prop: string) => {
+  const editableColumns = editableColumnsList.value
+
+  // alwaysEditable 模式下,支持 Tab 键切换焦点
+  if (isAlwaysEditable.value) {
+    const currentColumnIndex = editableColumns.findIndex((col) => col.prop === prop)
+
+    if (e.key === 'Tab') {
+      e.preventDefault()
+      const row = props.modelValue[rowIndex]
+      if (e.shiftKey) {
+        // Shift+Tab: 移动到上一个单元格
+        const prevColumn = editableColumns[currentColumnIndex - 1]
+        if (prevColumn) {
+          focusCell(row, rowIndex, prevColumn.prop)
+        } else {
+          // 上一行的最后一个可编辑列
+          const prevRowIndex = rowIndex - 1
+          if (prevRowIndex >= 0) {
+            focusCell(props.modelValue[prevRowIndex], prevRowIndex, editableColumns[editableColumns.length - 1].prop)
+          }
+        }
+      } else {
+        // Tab: 移动到下一个单元格
+        const nextColumn = editableColumns[currentColumnIndex + 1]
+        if (nextColumn) {
+          focusCell(row, rowIndex, nextColumn.prop)
+        } else {
+          // 下一行的第一个可编辑列
+          const nextRowIndex = rowIndex + 1
+          if (nextRowIndex < props.modelValue.length) {
+            focusCell(props.modelValue[nextRowIndex], nextRowIndex, editableColumns[0].prop)
+          }
+        }
+      }
+    }
+    return
+  }
+
+  switch (e.key) {
+    case 'Enter':
+      e.preventDefault()
+      saveAndMoveNext()
+      break
+    case 'Escape':
+      e.preventDefault()
+      cancelEdit()
+      break
+    case 'Tab':
+      e.preventDefault()
+      if (e.shiftKey) {
+        // Shift+Tab: 移动到上一个单元格
+        moveToPrevCell(rowIndex, prop)Shift+TabShift+TabShift+TabShift+TabShift+Tab
+      } else {
+        // Tab: 移动到下一个单元格
+        saveAndMoveNext()TabTabTabTabTab
+      }
+      break
+  }
+}
+
+// 修复: 聚焦到指定单元格
+const focusCell = (row: Record<string, any>, rowIndex: number, prop: string) => {
+  nextTick(() => {
+    const inputRef = getInputRef(row, rowIndex, prop)
+    if (inputRef?.focus) {
+      inputRef.focus()
+    } else if (inputRef?.$el?.querySelector) {
+        const inputEl = inputRef.$el.querySelector('input')
+        inputEl?.focus()
+    }
+  })
+}
+
+// 优化: 移动到上一个单元格 - 使用缓存的可编辑列列表
+const moveToPrevCell = (rowIndex: number, prop: string) => {
+  const editableColumns = editableColumnsList.value
+  const currentColumnIndex = editableColumns.findIndex((col) => col.prop === prop)
+
+  if (currentColumnIndex !== -1) {
+    const prevColumn = editableColumns[currentColumnIndex - 1]
+    if (prevColumn) {
+      // 同一行上一个可编辑列
+      endEdit('save')
+      nextTick(() => {
+        startEdit(rowIndex, prevColumn.prop)
+      })
+    } else {
+      // 上一行的最后一个可编辑列
+      const prevRowIndex = rowIndex - 1
+      if (prevRowIndex >= 0) {
+        endEdit('save')
+        nextTick(() => {
+          startEdit(prevRowIndex, editableColumns[editableColumns.length - 1].prop)
+        })
+      } else {
+        endEdit('save')
+      }
+    }
+  }
+}
+
+// 处理单元格点击
+const handleCellClick = (row: Record<string, any>, column: any, rowIndex: number) => {
+  if (isAlwaysEditable.value) return
+  const prop = column.property || column.prop
+  if (editableColumnsSet.value.has(prop)) {
+    startEdit(rowIndex, prop)
+  }
+}
+
+// 处理单元格双击
+const handleCellDblClick = (row: Record<string, any>, column: any, rowIndex: number) => {
+  if (isAlwaysEditable.value) return
+  const prop = column.property || column.prop
+  if (editableColumnsSet.value.has(prop)) {
+    startEdit(rowIndex, prop)
+  }
+}
+
+// 修复: 处理失焦
+const handleBlur = (row: Record<string, any>, rowIndex: number, prop: string) => {
+  // alwaysEditable 模式下,失焦不结束编辑
+  if (isAlwaysEditable.value) {
+    // 修复: 使用 setTimeout 延迟,避免与其他点击事件冲突
+    const id = setTimeout(() => {
+      activeTimeouts.delete(id)
+      // 校验
+      if (!props.validateOnInput) {
+        validateCell(row, prop, rowIndex)
+      }
+    }, 100)
+    activeTimeouts.add(id)
+    return
+  }
+
+  // 修复: 使用 setTimeout 延迟,避免与其他点击事件冲突
+  const id = setTimeout(() => {
+    activeTimeouts.delete(id)
+    // 检查是否还有其他可编辑单元格被点击
+    if (editingCell.value?.rowIndex === rowIndex && editingCell.value?.prop === prop) {
+      // 校验
+      if (!props.validateOnInput) {
+        validateCell(row, prop, rowIndex)
+      }
+      // 如果配置了点击外部自动保存
+      if (props.clickOutsideToSave) {
+        endEdit('save')
+      }
+    }
+  }, 100)
+  activeTimeouts.add(id)
+}
+
+// 点击外部处理
+const handleClickOutside = (e: MouseEvent) => {
+  if (!editingCell.value || !props.clickOutsideToSave) return
+
+  const tableEl = tableRef.value?.$el
+  if (tableEl && !tableEl.contains(e.target as Node)) {
+    endEdit('save')
+  }
+}
+
+// 获取插槽
+const slots = useSlots()
+
+// 渲染单元格内容
+const renderCell = (rowData: any, rowIndex: number, column: EditableColumn): VNode => {
+  const prop = column.prop
+  const isEditing = editingCell.value?.rowIndex === rowIndex && editingCell.value?.prop === prop
+  const isEditable = shouldRenderEditor(prop)
+  const isAlwaysEdit = isAlwaysEditable.value && isEditable
+  const showEditor = isAlwaysEdit || isEditing
+
+  // 自定义插槽渲染函数
+  const renderCustomSlot = () => {
+    const slotName = `edit-cell-${prop}`
+    const slot = slots[slotName]
+    if (slot) {
+      return slot({
+        row: rowData,
+        modelValue: rowData[prop],
+        column,
+        onUpdate: (value: any) => handleCellChange(rowData, prop, value, rowIndex)
+      })
+    }
+    return null
+  }
+
+  // 渲染编辑器
+  const renderEditor = () => {
+    // 自定义编辑器插槽
+    if (column.editType === 'custom') {
+      const customSlot = renderCustomSlot()
+      if (customSlot) return customSlot
+    }
+
+    // 动态编辑器组件
+    const EditorComponent = getEditorComponent(column.editType)
+    if (EditorComponent) {
+      const editorProps = {
+        modelValue: rowData[prop],
+        ...getEditorDefaultProps(column.editType),
+        ...column.fieldProps
+      }
+
+      // 保存 ref 以便聚焦
+      const onRef = (el: any) => {
+        setInputRef(el, rowData, rowIndex, prop)
+      }
+
+      const children: any[] = []
+
+      // select 组件的选项
+      if (column.editType === 'select' && column.options) {
+        column.options.forEach((option) => {
+          children.push(
+            h(ElOption, {
+              key: option.value,
+              label: option.label,
+              value: option.value
+            })
+          )
+        })
+      }
+
+      return h(
+        EditorComponent,
+        {
+          ref: onRef,
+          class: `editable-${column.editType}`,
+          ...editorProps,
+          'onUpdate:modelValue': (value: any) => handleCellChange(rowData, prop, value, rowIndex),
+          onBlur: () => handleBlur(rowData, rowIndex, prop),
+          onKeydown: (e: KeyboardEvent) => handleKeyDown(e, rowIndex, prop)
+        },
+        children.length > 0 ? () => children : undefined
+      )
+    }
+
+    return null
+  }
+
+  // 渲染展示态
+  const renderView = () => {
+    // 自定义展示插槽
+    const viewSlotName = `view-cell-${prop}`
+    const viewSlot = slots[viewSlotName]
+    if (viewSlot) {
+      return viewSlot({
+        row: rowData,
+        column
+      })
+    }
+
+    // 默认展示
+    const displayValue = column.formatter ? column.formatter(rowData, column) : rowData[prop]
+    const errors = getCellErrors(rowIndex, prop)
+    const isError = errors && errors.length > 0
+
+    return h(
+      ElTooltip,
+      {
+        content: String(displayValue),
+        disabled: !props.showOverflowTooltip,
+        placement: 'top'
+      },
+      {
+        default: () =>
+          h('span', {
+            class: ['cell-value', { 'has-error': isError }]
+          }, displayValue)
+      }
+    )constdisplayValuecolumn.formattercolumn.formatterconstdisplayValuecolumn.formattercolumn.formatterconstdisplayValuecolumn.formattercolumn.formatterconstdisplayValuecolumn.formattercolumn.formatterconstdisplayValuecolumn.formattercolumn.formatter
+  }
+
+  // 渲染错误提示
+  const renderError = () => {
+    const errors = getCellErrors(rowIndex, prop)
+    if (!errors || errors.length === 0) return null
+
+    return h('div', { class: 'error-message' }, [
+      h('div', { class: 'error-list' }, errors.map((error, idx) =>
+        h('div', { key: idx }, error)
+      ))
+    ])
+  }
+
+  return h('div', { class: ['editable-cell', { 'is-editing': showEditor }] }, [
+    showEditor ? renderEditor() : renderView(),
+    renderError()
+  ])
+}
+
+// 生成 el-table-v2 所需的列数据
+const tableV2Columns = computed(() => {
+  const result: any[] = []
+
+  // 序号列
+  if (props.showIndex) {
+    result.push({
+      key: '__index__',
+      title: '序号',
+      width: 60,
+      align: 'center',
+      cellRenderer: ({ rowIndex }: { rowIndex: number }) => {
+        return h('div', { class: 'index-cell' }, rowIndex + 1)
+      }
+    })
+  }
+
+  // 数据列
+  for (const column of props.columns) {
+    result.push({
+      key: column.prop,
+      title: column.label,
+      width: typeof column.width === 'number' ? column.width : typeof props.fixedWidth === 'number' ? props.fixedWidth : 120,
+      align: column.align || 'center',
+      cellRenderer: ({ rowData, rowIndex }: { rowData: any; rowIndex: number }) => {
+        return renderCell(rowData, rowIndex, column)
+      }
+    })
+  }
+
+  return result
+})
+
+// 生成 el-table-v2 所需的行数据
+const tableV2Data = computed(() => {
+  return props.modelValue.map((row, index) => ({
+    ...row,
+    __index: index
+  }))
+})
+
+// 暴露方法
+const startEditAll = () => {
+  if (!props.editable) return
+  // alwaysEditable 模式下,不需要调用此方法
+  if (isAlwaysEditable.value) return
+
+  // 开始编辑第一行的第一个可编辑单元格
+  const firstEditableColumn = props.columns.find((col) => col.editable)
+  if (firstEditableColumn && props.modelValue.length > 0) {
+    startEdit(0, firstEditableColumn.prop)
+  }
+}
+
+const saveAll = () => {
+  endEdit('save')
+}
+
+const cancelAll = () => {
+  cancelEdit()
+}
+
+const validateAll = async () => {
+  const promises: Promise<boolean>[] = []
+  const editableColumns = editableColumnsList.value
+  for (let rowIndex = 0; rowIndex < props.modelValue.length; rowIndex++) {
+    for (const column of editableColumns) {
+      promises.push(validateCellAsync(props.modelValue[rowIndex], column.prop, rowIndex))
+    }
+  }
+  const results = await Promise.all(promises)
+  return results.every(Boolean)
+}
+
+// 生命周期
+onMounted(() => {
+  if (props.clickOutsideToSave && !isAlwaysEditable.value) {
+    document.addEventListener('click', handleClickOutside)
+  }
+})
+
+onUnmounted(() => {
+  if (props.clickOutsideToSave && !isAlwaysEditable.value) {
+    document.removeEventListener('click', handleClickOutside)
+  }
+  // 修复: 清理所有定时器
+  activeTimeouts.forEach(clearTimeout)
+  activeTimeouts.clear()
+})
+
+// 获取表格所有数据
+const getData = () => {
+  return [...props.modelValue]
+}
+
+// 设置表格数据
+const setData = (data: Array<Record<string, any>>) => {
+  emit('update:modelValue', data)
+  cleanupInputRefs()
+}
+
+// 获取指定行数据
+const getRow = (rowIndex: number) => {
+  if (rowIndex >= 0 && rowIndex < props.modelValue.length) {
+    return props.modelValue[rowIndex]
+  }
+  return null
+}
+
+// 设置指定行数据
+const setRow = (rowIndex: number, rowData: Record<string, any>) => {
+  if (rowIndex >= 0 && rowIndex < props.modelValue.length) {
+    const newData = [...props.modelValue]
+    newData[rowIndex] = rowData
+    emit('update:modelValue', newData)
+  }
+}
+
+// 获取指定单元格的值
+const getCellValue = (rowIndex: number, prop: string) => {
+  const row = getRow(rowIndex)
+  return row ? row[prop] : undefinedrowgetRowreturnrowrowproprowgetRowreturnrowrowproprowgetRowreturnrowrowproprowgetRowreturnrowrowproprowgetRowreturnrowrowprop
+}
+
+// 设置指定单元格的值
+const setCellValue = (rowIndex: number, prop: string, value: any) => {
+  if (rowIndex >= 0 && rowIndex < props.modelValue.length) {
+    const row = props.modelValue[rowIndex]
+    if (row) {
+      handleCellChange(row, prop, value, rowIndex)
+    }
+  }
+}
+
+// 获取所有行数据
+const getRows = () => {
+  return [...props.modelValue]
+}
+
+// 清除所有错误信息
+const clearErrors = () => {
+  cellErrors.value.clear()
+}
+
+// 获取指定单元格的错误信息
+const getCellError = (rowIndex: number, prop: string) => {
+  return cellErrors.value.get(getCellKey(rowIndex, prop)) || null
+}
+
+// 获取当前编辑的单元格
+const getEditingCell = () => {
+  return editingCell.value
+}
+
+// 检查表格数据是否有效(无校验错误)
+const isValid = () => {
+  return cellErrors.value.size === 0
+}
+
+// 添加一行数据
+const addRow = (rowData: Record<string, any> = {}) => {
+  const newData = [...props.modelValue, rowData]
+  emit('update:modelValue', newData)
+}
+
+// 删除指定行数据
+const removeRow = (rowIndex: number) => {
+  if (rowIndex >= 0 && rowIndex < props.modelValue.length) {
+    const newData = props.modelValue.filter((_, index) => index !== rowIndex)
+    emit('update:modelValue', newData)
+    cleanupInputRefs()
+  }
+}
+
+// 插入一行数据到指定位置
+const insertRow = (rowIndex: number, rowData: Record<string, any> = {}) => {
+  if (rowIndex >= 0 && rowIndex <= props.modelValue.length) {
+    const newData = [...props.modelValue]
+    newData.splice(rowIndex, 0, rowData)
+    emit('update:modelValue', newData)
+    cleanupInputRefs()
+  }
+}
+
+// 修复: 使用 rowKey 代替 rowIndex,避免内存泄漏
+const inputRefs = shallowRef(new Map<string, ComponentPublicInstance>())
+
+const setInputRef = (el: any, row: Record<string, any>, rowIndex: number, prop: string) => {
+  if (!el) return
+  const rowId = getRowId(row, rowIndex)
+  inputRefs.value.set(`${rowId}-${prop}`, el)
+}
+
+const getInputRef = (row: Record<string, any>, rowIndex: number, prop: string): ComponentPublicInstance | null => {
+  const rowId = getRowId(row, rowIndex)
+  return inputRefs.value.get(`${rowId}-${prop}`) ?? null
+}
+
+// 修复: 清理 inputRefs
+const cleanupInputRefs = () => {
+  inputRefs.value.clear()
+}
+
+// 计算 el-table-v2 所需的总宽度
+const calculateTotalWidth = computed(() => {
+  let total = 0
+  if (props.showIndex) {
+    total += 60
+  }
+  for (const column of props.columns) {
+    total += typeof column.width === 'number' ? column.width : typeof props.fixedWidth === 'number' ? props.fixedWidth : 120
+  }
+  return total
+})
+
+// 暴露给父组件
+defineExpose({
+  // 原有方法
+  startEditAll,
+  saveAll,
+  cancelAll,
+  validateAll,
+  startEdit,
+  endEdit,
+  tableRef,
+  registerEditor,
+  // 新增 get/set 方法
+  getData,
+  setData,
+  getRow,
+  setRow,
+  getCellValue,
+  setCellValue,
+  getRows,
+  clearErrors,
+  getCellError,
+  getEditingCell,
+  isValid,
+  // 新增行操作方法
+  addRow,
+  removeRow,
+  insertRow,
+  // 新增: 行 ID 获取方法
+  getRowId,
+  // 新增: 校验方法
+  validateCellAsync,
+  isCellValidSync
+})
+</script>
+
+<template>
+  <div class="editable-table-v2">
+    <el-table-v2
+      ref="tableRef"
+      :columns="tableV2Columns"
+      :data="tableV2Data"
+      :width="calculateTotalWidth"
+      :height="height || 400"
+      :max-height="maxHeight"
+      :row-key="rowKey"
+      :fixed="true"
+    >
+      <!-- 自定义插槽 - 通过 v-for 循环所有插槽 -->
+      <template v-for="(_, slotName) in $slots" :key="slotName" #[slotName]="slotProps">
+        <slot :name="slotName" v-bind="slotProps"></slot>
+      </template>
+    </el-table-v2>
+  </div>
+</template>
+
+<style lang="scss" scoped>
+.editable-table-v2 {
+  width: 100%;
+
+  :deep(.el-v2-table) {
+    border: v-bind('border ? "1px solid var(--el-border-color)" : "none"');
+
+    .el-v2-table__row-cell {
+      padding: 4px 8px;
+      position: relative;
+
+      &:hover {
+        cursor: pointer;
+      }
+    }
+  }
+
+  :deep(.el-v2-table__row-wrapper) {
+    .el-v2-table__row:nth-child(even) {
+      background-color: v-bind('stripe ? "var(--el-fill-color-light)" : "transparent"');
+    }
+  }
+
+  // 单元格样式
+  .editable-cell {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    &.is-editing {
+      // 编辑态样式
+      .editable-input,
+      .editable-input-number,
+      .editable-select,
+      .editable-date,
+      .editable-datetime,
+      .editable-switch,
+      .editable-textarea {
+        :deep(.el-input__wrapper),
+        :deep(.el-input-number__wrapper) {
+          box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+        }
+
+        :deep(.el-input__inner) {
+          height: 32px;
+        }
+      }
+    }
+
+    // 展示态样式
+    .cell-value {
+      display: inline-block;
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transition: all 0.3s;
+
+      &.has-error {
+        color: var(--el-color-danger);
+      }
+    }
+  }
+
+  .index-cell {
+    text-align: center;
+    line-height: 32px;
+  }
+
+  .error-message {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--el-color-danger);
+    min-height: 16px;
+  }
+}
+
+// 编辑态输入框聚焦效果
+:deep(.editable-cell:focus-within) {
+  .editable-input,
+  .editable-input-number,
+  .editable-select,
+  .editable-date,
+  .editable-datetime,
+  .editable-textarea {
+    :deep(.el-input__wrapper),
+    :deep(.el-input-number__wrapper) {
+      box-shadow: 0 0 0 2px var(--el-color-primary) inset;
+    }
+  }
+}
+</style>

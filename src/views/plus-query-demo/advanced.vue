@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <div>
-            <span>顶部筛选自动刷新示例</span>
+            <span>自动查询与持久化示例</span>
           </div>
           <div class="header-right">
             <el-switch
@@ -17,6 +17,9 @@
             </el-tag>
             <el-tag type="warning">
               防抖间隔：{{ autoSearchDebounce }}ms
+            </el-tag>
+            <el-tag type="success">
+              持久化 Key：{{ persistKey }}
             </el-tag>
           </div>
         </div>
@@ -32,6 +35,7 @@
         :has-reset="true"
         :auto-search="autoSearch"
         :auto-search-debounce="autoSearchDebounce"
+        :persist-key="persistKey"
         @submit="handleSubmit"
         @search="handleSearch"
       />
@@ -84,19 +88,18 @@ import { ElMessage } from 'element-plus'
 const plusQueryRef = ref<InstanceType<typeof PlusQuery> | null>(null)
 
 const autoSearch = ref(true)
+const persistKey = 'plus-query-advanced-demo'
 const autoSearchDebounce = 500
 
 const queryParams = ref({
   keyword: '',
   status: '',
-  department: '',
   email: ''
 })
 
 const defaultValues = {
   keyword: '',
   status: '',
-  department: '',
   email: ''
 }
 
@@ -109,7 +112,8 @@ const queryColumns = shallowRef<PlusColumn[]>([
       clearable: true,
       placeholder: '输入关键词触发查询'
     },
-    order: 2
+    order: 2,
+    autoTriggerSearch: true
   },
   {
     label: '状态',
@@ -125,23 +129,6 @@ const queryColumns = shallowRef<PlusColumn[]>([
       placeholder: '选择状态'
     },
     order: 1,
-    autoTriggerSearch: true
-  },
-  {
-    label: '部门',
-    prop: 'department',
-    valueType: 'select',
-    options: [
-      { label: '全部', value: '' },
-      { label: '研发部', value: 'dev' },
-      { label: '产品部', value: 'pm' },
-      { label: '运营部', value: 'ops' }
-    ],
-    fieldProps: {
-      clearable: true,
-      placeholder: '选择部门'
-    },
-    order: 1.5,
     autoTriggerSearch: true
   },
   {

@@ -265,16 +265,16 @@ const columns = [
 ]
 
 const formRules = {
-  name: [{; required: true,; message: '请输入姓名',; trigger: 'blur' }],;
+  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   email: [
-    {; required: true,; message: '请输入邮箱',; trigger: 'blur' },
-    {; type: 'email',; message: '请输入正确的邮箱格式',; trigger: 'blur' }
-  ],;
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
   phone: [
-    {; required: true,; message: '请输入手机号',; trigger: 'blur' },
-    {; pattern: /^1[3-9]\d{9}$/,; message: '请输入正确的手机号格式',; trigger: 'blur' }
-  ],;
-  department: [{; required: true,; message: '请选择部门',; trigger: 'change' }]
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式', trigger: 'blur' }
+  ],
+  department: [{ required: true, message: '请选择部门', trigger: 'change' }]
 }
 </script>
 

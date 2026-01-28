@@ -13,7 +13,7 @@ import type {
   InputNumberProps,
   RadioGroupProps,
   RateProps,
-  ISelectProps,
+  SelectProps,
   SliderProps,
   SwitchProps,
   TimePickerDefaultProps,
@@ -127,7 +127,7 @@ export type FieldProps = Partial<
      * @desc `valueType` 为 `cascader` 时是`(node: Node, keyword: string) => boolean`类型
      * @desc `valueType` 为 `select` 时是`() => void`类型
      */
-    filterMethod: CascaderProps['filterMethod'] | ISelectProps['filterMethod']
+    filterMethod: CascaderProps['filterMethod'] | SelectProps['filterMethod']
     /**
      * @desc `valueType` 为 `date-picker` 时**可能**是`[string, string]`类型，其余是`string`类型
      */
@@ -135,7 +135,7 @@ export type FieldProps = Partial<
     /**
      * @desc el-select，el-time-select 的 effect
      */
-    effect: ISelectProps['effect']
+    effect: SelectProps['effect']
     /**
      * @desc `valueType` 为 `slider` 时是`string`类型，其余是`number`类型
      */
@@ -155,7 +155,7 @@ export type FieldProps = Partial<
       Omit<InputNumberProps, OmitTypes> &
       Omit<RadioGroupProps, OmitTypes> &
       Omit<RateProps, OmitTypes> &
-      Omit<ISelectProps, OmitTypes> &
+      Omit<SelectProps, OmitTypes> &
       Omit<SliderProps, OmitTypes> &
       Omit<SwitchProps, OmitTypes> &
       Omit<TimePickerDefaultProps, OmitTypes> &
@@ -186,6 +186,8 @@ export type FormItemValueType =
   | 'radio'
   | 'rate'
   | 'select'
+  | 'api-select'
+  | 'data-select'
   | 'slider'
   | 'switch'
   | 'time-picker'
@@ -195,6 +197,7 @@ export type FormItemValueType =
   | 'text'
   | 'transfer'
   | 'tree-select'
+  | 'api-tree-select'
   | 'plus-radio'
   | 'plus-date-picker'
   | 'plus-input-tag'

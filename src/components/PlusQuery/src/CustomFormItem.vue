@@ -69,8 +69,8 @@
     <DataSelect
       v-else-if="valueType === 'data-select'"
       ref="fieldInstance"
-      v-model="state"
-      :placeholder="t('plus.field.pleaseSelect') + labelValue"
+      v-model="(state as any)"
+      :placeholder="labelValue"
       class="plus-form-item-field"
       v-bind="customFieldProps"
       @update:model-value="handleChange"
@@ -81,7 +81,7 @@
       v-else-if="valueType === 'select' && customFieldProps.multiple === true"
       ref="fieldInstance"
       v-model="state"
-      :placeholder="t('plus.field.pleaseSelect') + labelValue"
+      :placeholder="labelValue"
       :popper-append-to-body="false"
       fit-input-width
       class="plus-form-item-field"
@@ -193,7 +193,7 @@
       v-else
       ref="fieldInstance"
       v-model="state"
-      :placeholder="t('plus.field.pleaseEnter') + labelValue"
+      :placeholder="labelValue"
       class="plus-form-item-field"
       autocomplete="off"
       clearable
@@ -212,6 +212,7 @@ import type { Component, Ref } from 'vue'
 import { computed, inject, ref, watch } from 'vue'
 import type {
   FieldValueType,
+  FieldValues,
   FormFieldRefsType,
   OptionsRow,
   PlusColumn,
@@ -241,7 +242,7 @@ import {
 import { getFieldComponent, hasFieldComponent } from '@/components/PlusFormItem/src/form-item'
 import useGetOptions from '@/hooks/component/useGetOptions'
 import { formatToDateTime } from '@/utils/dateUtil'
-import {useI18n} from "@/hooks/web/useI18n.ts";
+import { useI18n } from '@/hooks/web/useI18n'
 const ElFormItem: Component = FormItemComponent
 const ElTooltip: Component = TooltipComponent
 const ElIcon: Component = IconComponent
@@ -249,7 +250,6 @@ const ElInput: Component = InputComponent
 const ElSelect: Component = SelectComponent
 const ElOption: Component = OptionComponent
 const DatePickerValueIsArrayList = ['datetimerange', 'daterange', 'monthrange']
-
 /**
  * 表格里表单每一项 的provide(inject) key
  */
@@ -276,6 +276,7 @@ const { t } = useI18n()
 
 export interface PlusFormItemProps {
   modelValue?: FieldValueType
+  formValues?: FieldValues
   hasLabel?: PlusColumn['hasLabel']
   label?: PlusColumn['label']
   prop: PlusColumn['prop']
@@ -291,9 +292,10 @@ export interface PlusFormItemProps {
   index?: number
   children?: {
     modelValue?: FieldValueType
+    formValues?: FieldValues
     hasLabel?: PlusColumn['hasLabel']
     label?: PlusColumn['label']
-    prop: PlusColumn['prop']
+    prop?: PlusColumn['prop']
     fieldProps?: PlusColumn['fieldProps']
     valueType?: PlusColumn['valueType']
     options?: PlusColumn['options']
@@ -317,28 +319,17 @@ defineOptions({
   name: 'PlusFormItem'
 })
 
-const props = defineProps({
-  modelValue: {
-    type: [String, Number, Boolean, Date, Array, Object, null],
-    default: ''
-  },
-  hasLabel: { type: Boolean, default: true },
-  label: { type: [String, Number, Boolean, Date, Array, Object, null], default: '' },
-  prop: { type: String, required: true },
-  fieldProps: { type: [Object, Function], default: () => ({}) },
-  valueType: { type: String, default: undefined },
-  options: { type: Array, default: () => [] },
-  formItemProps: { type: Object, default: () => ({}) },
-  renderField: { type: Function, default: undefined },
-  renderLabel: { type: Function, default: undefined },
-  tooltip: { type: [String, Boolean], default: '' },
-  fieldSlots: { type: [Object, Function], default: () => ({}) },
-  fieldChildrenSlot: { type: Function, default: undefined },
-  index: { type: Number, default: 0 },
-  children: {
-    type: Object,
-    default: () => ({})
-  }
+const props = withDefaults(defineProps<PlusFormItemProps>(), {
+  modelValue: '',
+  formValues: () => ({}),
+  hasLabel: true,
+  label: '',
+  options: () => [],
+  formItemProps: () => ({}),
+  tooltip: '',
+  fieldSlots: () => ({}),
+  index: 0,
+  children: () => ({})
 })
 const emit = defineEmits<PlusFormItemEmits>()
 const { customOptions, customOptionsIsReady } = useGetOptions(props)
@@ -366,10 +357,10 @@ const isArrayValue = computed(() => {
     ValueIsArrayList.includes(props.valueType as string),
     // 支持多选的表单组件
     ['select', 'tree-select'].includes(props.valueType as string) &&
-      customFieldProps.value?.multiple === true,
+    customFieldProps.value?.multiple === true,
     // 日期范围选择器
     props.valueType === 'date-picker' &&
-      DatePickerValueIsArrayList.includes(customFieldProps.value?.type),
+    DatePickerValueIsArrayList.includes(customFieldProps.value?.type),
     // 时间范围选择器
     props.valueType === 'time-picker' && customFieldProps.value?.isRange === true
   ].some((condition) => condition)
@@ -432,8 +423,8 @@ const commonProps = computed(() => {
   }
   if (props.valueType === 'date-picker') {
     Object.assign(base, {
-      startPlaceholder: componentProps?.startPlaceholder ? t(componentProps.startPlaceholder) : '',
-      endPlaceholder: componentProps?.endPlaceholder ? t(componentProps.endPlaceholder) : ''
+      startPlaceholder: isString(componentProps?.startPlaceholder) ? t(componentProps.startPlaceholder) : '',
+      endPlaceholder: isString(componentProps?.endPlaceholder) ? t(componentProps.endPlaceholder) : ''
     })
   }
 
@@ -448,8 +439,8 @@ const getChildrenProps = (item: OptionsRow) => {
     props.valueType === 'select' || props.valueType === 'data-select'
       ? { label: item.label, value: item.value }
       : versionIsLessThan260
-      ? { label: item.value }
-      : { label: item.label, value: item.value }
+        ? { label: item.value }
+        : { label: item.label, value: item.value }
 
   return {
     ...baseProps,
@@ -457,20 +448,33 @@ const getChildrenProps = (item: OptionsRow) => {
   }
 }
 
+const updateCustomFormItemProps = () => {
+  getCustomProps(props.formItemProps, state.value, props, props.index, 'formItemProps')
+    .then((data) => {
+      customFormItemProps.value = data
+    })
+    .catch((err) => {
+      throw err
+    })
+}
+
+const updateCustomFieldProps = () => {
+  getCustomProps(props.fieldProps, state.value, props, props.index, 'fieldProps')
+    .then((data) => {
+      customFieldProps.value = data
+      customFieldPropsIsReady.value = true
+    })
+    .catch((err) => {
+      throw err
+    })
+}
+
 /**
  * 监听formItemProps
  */
 watch(
   () => props.formItemProps,
-  (val) => {
-    getCustomProps(val, state.value, props, props.index, 'formItemProps')
-      .then((data) => {
-        customFormItemProps.value = data
-      })
-      .catch((err) => {
-        throw err
-      })
-  },
+  () => updateCustomFormItemProps(),
   {
     immediate: true,
     deep: true
@@ -482,16 +486,7 @@ watch(
  */
 watch(
   () => props.fieldProps,
-  (val) => {
-    getCustomProps(val, state.value, props, props.index, 'fieldProps')
-      .then((data) => {
-        customFieldProps.value = data
-        customFieldPropsIsReady.value = true
-      })
-      .catch((err) => {
-        throw err
-      })
-  },
+  () => updateCustomFieldProps(),
   {
     immediate: true,
     deep: true
@@ -499,10 +494,18 @@ watch(
 )
 
 watch(
+  () => props.formValues,
+  () => {
+    updateCustomFormItemProps()
+    updateCustomFieldProps()
+  },
+  { deep: true }
+)
+
+watch(
   computed(() => [props.modelValue, customFieldPropsIsReady.value, customOptionsIsReady.value]),
   ([val, fieldPropsIsReady, optionsIsReady]) => {
     if (fieldPropsIsReady && optionsIsReady) {
-      console.log(val)
       setValue(val)
     }
   },
@@ -537,5 +540,3 @@ defineExpose({
   fieldInstance
 })
 </script>
-
-

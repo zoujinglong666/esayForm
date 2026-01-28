@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlusQuery 组件测试页面</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            color: #409eff;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+        .demo-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #e4e7ed;
+            border-radius: 6px;
+        }
+        .demo-section h3 {
+            color: #303133;
+            margin-top: 0;
+            border-left: 4px solid #409eff;
+            padding-left: 12px;
+        }
+        .code-block {
+            background: #f8f8f8;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 16px 0;
+            overflow-x: auto;
+        }
+        .code-block pre {
+            margin: 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .feature-item {
+            padding: 15px;
+            background: #f0f9ff;
+            border-left: 4px solid #409eff;
+            border-radius: 4px;
+        }
+        .navigation {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .nav-button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #409eff;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .nav-button:hover {
+            background: #66b1ff;
+        }
+        .nav-button.secondary {
+            background: #909399;
+        }
+        .nav-button.secondary:hover {
+            background: #a6a9ad;
+        }
+        .info-box {
+            background: #f0f9ff;
+            border: 1px solid #abd6ff;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+        .info-box h4 {
+            color: #1890ff;
+            margin-top: 0;
+        }
+        .file-structure {
+            background: #f8f8f8;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 20px 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e4e7ed;
+            color: #909399;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>PlusQuery 组件完整示例</h1>
+            <p>一个功能强大的查询表单组件，支持多种表单控件和高级功能</p>
+        </div>
+
+        <div class="info-box">
+            <h4>🚀 快速开始</h4>
+            <p>启动项目后，访问以下路径查看示例：</p>
+            <ul>
+                <li><strong>基础示例</strong>: <code>/plus-query-demo</code> - 包含多种表单控件的基础用法</li>
+                <li><strong>高级示例</strong>: <code>/plus-query-demo/advanced</code> - 自定义插槽、复合表单、验证等高级功能</li>
+            </ul>
+        </div>
+
+        <div class="demo-section">
+            <h3>📋 示例文件结构</h3>
+            <div class="file-structure">
+                src/views/plus-query-demo/
+                ├── index.vue                 # 基础示例：员工查询系统
+                ├── advanced.vue             # 高级示例：复合查询和验证
+                └── README.md               # 详细文档说明
+
+                src/router/modules/
+                └── plus-query-demo.ts      # 路由配置
+
+                PLUS_QUERY_QUICK_START.md   # 快速开始指南
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>🎯 核心功能特性</h3>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <strong>多种表单控件</strong><br>
+                    支持 input、select、date-picker、slider、radio、checkbox 等
+                </div>
+                <div class="feature-item">
+                    <strong>表单验证</strong><br>
+                    内置验证规则，支持自定义验证器
+                </div>
+                <div class="feature-item">
+                    <strong>自定义插槽</strong><br>
+                    灵活的插槽系统，支持完全自定义渲染
+                </div>
+                <div class="feature-item">
+                    <strong>响应式设计</strong><br>
+                    自适应布局，支持移动端优化
+                </div>
+                <div class="feature-item">
+                    <strong>复合表单</strong><br>
+                    支持嵌套和组合表单项
+                </div>
+                <div class="feature-item">
+                    <strong>国际化</strong><br>
+                    内置多语言支持
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>💻 基础用法示例</h3>
+            <div class="code-block">
+                <pre>&lt;template&gt;
+  &lt;PlusQuery
+    v-model="queryParams"
+    :columns="queryColumns"
+    @submit="handleSubmit"
+  /&gt;
+&lt;/template&gt;
+
+&lt;script setup&gt;
+import { ref } from 'vue'
+import { PlusQuery } from '@/components/PlusQuery'
+import type { PlusColumn } from '@/components/PlusTable/types'
+
+const queryParams = ref({
+  keyword: '',
+  status: '',
+  dateRange: []
+})
+
+const queryColumns = ref&lt;PlusColumn[]&gt;([
+  {
+    label: '关键词',
+    prop: 'keyword',
+    valueType: 'input',
+    placeholder: '请输入关键词搜索'
+  },
+  {
+    label: '状态',
+    prop: 'status',
+    valueType: 'select',
+    options: [
+      { label: '全部', value: '' },
+      { label: '启用', value: 'active' },
+      { label: '禁用', value: 'inactive' }
+    ]
+  },
+  {
+    label: '创建时间',
+    prop: 'dateRange',
+    valueType: 'date-picker',
+    fieldProps: {
+      type: 'daterange',
+      format: 'YYYY-MM-DD'
+    }
+  }
+])
+
+const handleSubmit = (formData) =&gt; {
+  console.log('查询参数:', formData)
+}
+&lt;/script&gt;</pre>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>🔧 支持的表单控件类型</h3>
+            <div class="code-block">
+                <pre>// 文本输入类
+'input'          // 单行文本
+'textarea'       // 多行文本
+'input-number'   // 数字输入
+
+// 选择类
+'select'         // 下拉选择
+'radio'          // 单选框
+'checkbox'       // 复选框
+'cascader'       // 级联选择
+
+// 日期时间类
+'date-picker'    // 日期选择
+'time-picker'    // 时间选择
+'time-select'    // 时间下拉
+
+// 其他控件
+'slider'         // 滑块
+'switch'         // 开关
+'color-picker'   // 颜色选择
+'rate'           // 评分
+'transfer'       // 穿梭框
+'plus-input-tag' // 标签输入</pre>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h3>🎨 高级功能示例</h3>
+            <div class="code-block">
+                <pre>// 自定义插槽
+&lt;template #field-custom="{ modelValue, onUpdate }"&gt;
+  &lt;el-input
+    :model-value="modelValue"
+    @update:model-value="onUpdate"
+    clearable
+  &gt;
+    &lt;template #prepend&gt;🔍&lt;/template&gt;
+  &lt;/el-input&gt;
+&lt;/template&gt;
+
+// 表单验证
+const validationRules = [
+  {
+    label: '邮箱地址',
+    prop: 'email',
+    required: true,
+    rules: [
+      { required: true, message: '邮箱不能为空' },
+      { type: 'email', message: '邮箱格式不正确' }
+    ]
+  },
+  {
+    label: '手机号',
+    prop: 'phone',
+    rules: [
+      { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确' }
+    ]
+  }
+]</pre>
+            </div>
+        </div>
+
+        <div class="navigation">
+            <a href="#" onclick="alert('请先启动 Vue 项目: npm run dev')" class="nav-button">
+                查看基础示例
+            </a>
+            <a href="#" onclick="alert('请先启动 Vue 项目: npm run dev')" class="nav-button secondary">
+                查看高级示例
+            </a>
+        </div>
+
+        <div class="demo-section">
+            <h3>📚 学习资源</h3>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <strong>快速开始指南</strong><br>
+                    <a href="#">PLUS_QUERY_QUICK_START.md</a> - 详细的配置说明和最佳实践
+                </div>
+                <div class="feature-item">
+                    <strong>组件文档</strong><br>
+                    <a href="#">README.md</a> - 完整的功能说明和API文档
+                </div>
+                <div class="feature-item">
+                    <strong>源码参考</strong><n                    <a href="#">PlusQuery 源码</a> - 组件实现原理和扩展指南
+                </div>
+                <div class="feature-item">
+                    <strong>Element Plus</strong><br>
+                    <a href="https://element-plus.org/" target="_blank">官方文档</a> - 底层UI库文档
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h4>⚡ 开发提示</h4>
+            <ul>
+                <li>使用 <code>order</code> 属性控制表单项的排列顺序</li>
+                <li>通过 <code>fieldProps</code> 传递具体表单控件的属性</li>
+                <li>使用 <code>rules</code> 数组配置表单验证规则</li>
+                <li>利用 <code>hideInForm</code> 控制条件显示/隐藏</li>
+                <li>自定义插槽可以实现完全个性化的表单控件</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>
+                PlusQuery 组件示例 © 2024<br>
+                基于 Vue 3 + Element Plus 构建
+            </p>
+            <p>
+                遇到问题？查看完整文档或参考源码实现
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // 简单的页面交互
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('PlusQuery 测试页面已加载');
+
+            // 添加一些动态交互
+            const navButtons = document.querySelectorAll('.nav-button');
+            navButtons.forEach(button => {
+                button.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-2px)';
+                });
+
+                button.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

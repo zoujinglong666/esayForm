@@ -1,4 +1,4 @@
-import type { Rule as ValidationRule } from 'ant-design-vue/lib/form/interface'
+import type { Rule } from './types/form'
 import type { ComponentType } from './types'
 import { dateUtil } from '@/utils/dateUtil'
 import { isNumber, isObject } from '@/utils/is'

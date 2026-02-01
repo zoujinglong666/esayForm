@@ -147,7 +147,7 @@ import {
   setValue
 } from '@/components/PlusTable/utils'
 import { ArrowDown } from '@element-plus/icons-vue'
-import { isFunction } from '@/utils/is'
+import { isFunction, isEqual } from '@/utils/is'
 import PlusFormContent from '@/components/PlusForm/src/form-content.vue'
 import CustomFormContent from '@/components/PlusQuery/src/custom-form-content.vue'
 import { useI18n } from 'vue-i18n'
@@ -158,6 +158,8 @@ import {
   getOptionsSync
 } from '@/components/PlusQuery/utils'
 import { useDebounceFn } from '@vueuse/core'
+
+const DEDUPE_INTERVAL = 300
 
 // ========================
 // 类型扩展
@@ -217,6 +219,9 @@ const { t } = useI18n()
 const formInstance = ref<FormInstance | null>(null)
 const values = ref<FieldValues>({})
 const collapseState = reactive<Record<string, boolean>>({})
+const lastEmitValues = ref<Record<string, any> | null>(null)
+const lastEmitAt = ref(0)
+const isSubmitting = ref(false)
 
 // ========================
 // 工具函数
@@ -699,9 +704,17 @@ const doAutoSearch = () => {
   const currentFormData = getFinalFormData(values.value, allDisplayedColumns.value)
   const finalValues = {
     ...currentFormData,
-    // pageNo: values.value.pageNo || 1,
-    // pageSize: values.value.pageSize || 10
   }
+  const now = Date.now()
+  if (
+    lastEmitValues.value &&
+    now - lastEmitAt.value < DEDUPE_INTERVAL &&
+    isEqual(lastEmitValues.value, finalValues)
+  ) {
+    return
+  }
+  lastEmitValues.value = deepClone(finalValues)
+  lastEmitAt.value = now
   emit('submit', finalValues)
   emit('search', finalValues)
 }
@@ -721,10 +734,15 @@ const handleChange = async (_: FieldValues, column: PlusColumn) => {
 }
 
 const handleSubmit = () => {
-  // 确保使用最新的 values
+  if (isSubmitting.value) return
+  isSubmitting.value = true
+  if ((triggerAutoSearch as any)?.cancel) {
+    ;(triggerAutoSearch as any).cancel()
+  }
   nextTick(() => {
     emit('update:modelValue', values.value)
     doAutoSearch()
+    isSubmitting.value = false
   })
 }
 
@@ -734,6 +752,9 @@ const handleReset = (): void => {
   values.value = { ...props.defaultValues, ...defaultValueObj }
   emitChange()
   emit('reset', values.value)
+  lastEmitValues.value = null
+  lastEmitAt.value = 0
+  isSubmitting.value = false
 }
 
 const handleValidate = (...args: any[]): void => {

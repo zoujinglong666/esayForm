@@ -8,7 +8,7 @@
     :columns="columns"
     :has-footer="false"
     :has-label="false"
-    v-bind="column.formProps"
+    v-bind="rowFormProps"
     class="plus-display-item__form"
     @change="handleChange"
   >
@@ -156,7 +156,7 @@ import {
   getValue,
   setValue
 } from '@/components/PlusTable/utils'
-import { getFormItemProps } from '@/utils/plus-column-utils'
+import { getFormItemProps, getFormProps, isHideInForm } from '@/utils/plus-column-utils'
 import type { PropType, Ref } from 'vue'
 import { ref, watch, computed } from 'vue'
 import type { PlusColumn, RecordType, FieldValues } from '@/components/PlusTable/types'
@@ -205,6 +205,7 @@ const props = defineProps({
 const emit = defineEmits(['change'])
 
 const customFieldProps = ref<RecordType>({})
+const rowFormProps = ref<RecordType>({})
 const formInstance = ref()
 const subRow = ref(cloneDeep(props.row))
 const { customOptions: options } = useGetOptions(props.column, subRow, props.index)
@@ -391,13 +392,18 @@ watch(
     if (!column) return
     const baseColumn = column as PlusColumn
     const rowIndex = (props.index || 0) as number
+    const formProps = getFormProps(baseColumn, subRow.value, rowIndex)
     const formItemProps = getFormItemProps(baseColumn, subRow.value, rowIndex)
+    const hideInForm = isHideInForm(baseColumn, subRow.value, rowIndex)
+
+    rowFormProps.value = formProps
 
     columns.value = [
       {
         ...baseColumn,
         fieldProps: customFieldProps.value,
         formItemProps,
+        hideInForm,
         options: options.value
       } as PlusColumn
     ]

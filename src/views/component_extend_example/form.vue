@@ -433,18 +433,17 @@ import {usePlusTableRowWatcher} from "@/hooks/component/usePlusTableRowWatcher.t
 const tableData = ref([
   { id: 1, name: 'Tom',   status: '0', time: '', category: 'A' },
   { id: 2, name: 'Jerry', status: '1', time: '', category: 'B' },
-  { id: 3, name: 'admin', status: '0', time: '', category: 'A' }
+  { id: 3, name: 'admin', status: 'admin', time: '', category: 'A' }
 ])
 
 const columns = reactive<PlusColumn[]>([
   {
     label: '姓名',
     prop: 'name',
-    width: 150,
-    // ✅ 用 formItemProps 而不是 formProps
-    formItemProps: (row, column, rowIndex) => ({
+    // ✅ 用 formItemProps 按行控制当前字段校验
+    formItemProps: (row: Record<string, any>, column: any, rowIndex: number) => ({
       rules: row.status === '0'
-        ? [{ required: true, message: '请输入姓名', trigger: 'blur' }]
+        ? [{ required: true, message: '请输入姓名', trigger: 'change' }]
         : []
     })
   },
@@ -454,7 +453,6 @@ const columns = reactive<PlusColumn[]>([
     width: 120,
     valueType: 'select',
     options: (row, column, rowIndex) => {
-      console.log('options', row, column)
       if (row.name === 'admin') {
         return [{ label: '管理员', value: 'admin' }]
       }
@@ -463,9 +461,13 @@ const columns = reactive<PlusColumn[]>([
         { label: '已解决', value: '1' }
       ]
     },
+    // ✅ 使用 formItemProps 控制当前字段规则
+    formItemProps: {
+      rules: [{ required: true, message: '请选择状态', trigger: 'change' }]
+    },
     fieldProps: (row, column, rowIndex) => ({
-      disabled: row.name === 'Jerry'
-    })
+      disabled: row.name === 'Jerry',
+    }),
   },
   {
     label: '日期',
@@ -495,9 +497,6 @@ const {onFormChange}=usePlusTableRowWatcher(plusTableRef,tableData)
 </script>
 
 <style scoped>
-.row-aware-demo {
-  padding: 20px;
-}
 
 .debug {
   margin-top: 24px;

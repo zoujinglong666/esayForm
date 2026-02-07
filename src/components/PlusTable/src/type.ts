@@ -489,3 +489,46 @@ export interface PlusPaginationEmits {
   (e: 'size-change', value: number): void
   (e: 'current-change', value: number): void
 }
+export type RowUpdater =
+  | Record<string, any>
+  | ((row: RecordType, index: number) => Record<string, any>)
+
+export type RowSelector =
+  | number[]
+  | Record<string, any>
+  | ((row: RecordType, index: number) => boolean)
+  | undefined
+export type RowLocator =
+  | number
+  | Record<string, any>
+  | ((row: RecordType, index: number) => boolean)
+
+
+export type RowChangeContext<T> = {
+  prop: string
+  value: any
+  row: T
+  index: number
+  setRow: (index: number, data: Partial<T>) => void
+  updateRows: (
+    matcher: number[] | Partial<T> | ((row: T, index: number) => boolean),
+    data: Partial<T> | ((row: T, index: number) => Partial<T>)
+  ) => void
+}
+
+export type RowChangeHandler<T> = (ctx: RowChangeContext<T>) => void
+
+export type WatchOptions = {
+  once?: boolean
+  priority?: number
+}
+
+export type WatchRule<T> = {
+  id: number
+  props: string[]
+  handler: RowChangeHandler<T>
+  once: boolean
+  priority: number
+  used: boolean
+}
+

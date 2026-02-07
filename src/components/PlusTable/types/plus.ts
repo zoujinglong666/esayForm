@@ -75,6 +75,53 @@ export interface OptionsRow<T = undefined> {
    */
   children?: OptionsRow[]
 }
+
+/**
+ * 行感知函数类型 - 支持访问整行数据的函数签名
+ */
+export type RowAwareFunction<T extends Record<string, any> = any> = (
+  row: RecordType,
+  column: PlusColumn,
+  rowIndex: number
+) => T
+
+/**
+ * 行感知的选择类型
+ */
+export type RowAwareOptionsType =
+  | OptionsRow[]
+  | ComputedRef<OptionsRow[]>
+  | ((row: RecordType, column: PlusColumn, rowIndex: number) => OptionsRow[] | Promise<OptionsRow[]>)
+  | ((props?: PlusColumn) => OptionsRow[] | Promise<OptionsRow[]>)
+  | Promise<OptionsRow[]>
+
+/**
+ * 行感知的props类型
+ */
+export type RowAwarePropsItemType<T extends Record<string, any> = any> =
+  | Partial<T>
+  | ComputedRef<Partial<T>>
+  | ((value: FieldValueType, data: { row: Record<string, any>; index: number }) => Partial<T> | Promise<Partial<T>>)
+  | RowAwareFunction<Partial<T> | Promise<Partial<T>>>
+  | Promise<Partial<T>>
+
+/**
+ * 行感知的布尔类型
+ */
+export type RowAwareBooleanType =
+  | boolean
+  | Ref<boolean>
+  | ComputedRef<boolean>
+  | RowAwareFunction<boolean>
+
+/**
+ * 行感知的字符串类型
+ */
+export type RowAwareStringType =
+  | string
+  | ComputedRef<string>
+  | RowAwareFunction<string>
+
 /**
  * 选择类型   支持数组，computed，函数和Promise
  */
@@ -82,6 +129,7 @@ export type OptionsType =
   | OptionsRow[]
   | ComputedRef<OptionsRow[]>
   | ((props?: PlusColumn) => OptionsRow[] | Promise<OptionsRow[]>)
+  | ((row: RecordType, column: PlusColumn, rowIndex: number) => OptionsRow[] | Promise<OptionsRow[]>)
   | Promise<OptionsRow[]>
 /**
  * 共享类型
@@ -93,7 +141,7 @@ export interface CommonType {
    *  @version v0.0.10 修改为可选
    *  @version v0.1.0 类型新增ComputedRef<string>
    */
-  label?: string | ComputedRef<string>
+  label?: string | ComputedRef<string> | RowAwareFunction<string>
   /**
    * 表格对应列内容的字段名 ；在form 中是 el-input等所有表单项的双向绑定的值；在descriptions 是 el-descriptions-item的值对应的字段；
    */
@@ -120,16 +168,16 @@ export interface CommonType {
   valueType?: TableValueType | FormItemValueType
 
   /** @desc 在 PlusDescriptions组件中 隐藏 */
-  hideInDescriptions?: boolean | Ref<boolean> | ComputedRef<boolean>
+  hideInDescriptions?: RowAwareBooleanType
 
   /** @desc 在 PlusForm 组件中隐藏 */
-  hideInForm?: boolean | Ref<boolean> | ComputedRef<boolean>
+  hideInForm?: RowAwareBooleanType
 
   /** @desc 在 PlusTable 组件中隐藏 */
-  hideInTable?: boolean | Ref<boolean> | ComputedRef<boolean>
+  hideInTable?: RowAwareBooleanType
 
   /** @desc 在 PlusSearch 中隐藏 */
-  hideInSearch?: boolean | Ref<boolean> | ComputedRef<boolean>
+  hideInSearch?: RowAwareBooleanType
 
   /**
    * 描述行，el-descriptions-item 的props

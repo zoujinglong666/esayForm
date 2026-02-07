@@ -108,7 +108,6 @@ import { PlusRender } from '@/components/PlusRender'
 import type { TableColumnCtx } from 'element-plus'
 import { ElTableColumn, ElTooltip, ElIcon } from 'element-plus'
 import type { TableFormRefRow, FormChangeCallBackParams } from './type'
-import {useI18n} from '@/hooks/web/useI18n'
 export interface PlusTableTableColumnProps {
   columns?: PlusColumn[]
   editable?: boolean | 'click' | 'dblclick'
@@ -183,23 +182,93 @@ const getKey = (item: PlusColumn) => getTableKey(item, true)
  * @param column
  * @param item
  */
+
+// const pendingChanges = new Map<number, FormChangeCallBackParams>()
+// let flushScheduled = false
+//
+// const flushPendingChanges = () => {
+//   flushScheduled = false
+//   if (pendingChanges.size === 0) return
+//
+//   pendingChanges.forEach((params) => {
+//     emit('formChange', params)
+//   })
+//   pendingChanges.clear()
+// }
+//
+// const scheduleFlush = () => {
+//   if (flushScheduled) return
+//   flushScheduled = true
+//   requestAnimationFrame(flushPendingChanges)
+// }
+//
+// const handleChange = (
+//   data: { value: any; prop: string; row: RecordType },
+//   index: number,
+//   column: TableColumnCtx<RecordType>,
+//   item: PlusColumn,
+//   rest: RecordType
+// ) => {
+//   // 1️⃣ 缓存本次变更
+//   pendingChanges.set(index, {
+//     ...data,
+//     index,
+//     column: { ...column, ...item },
+//     rowIndex: index,
+//     ...rest
+//   })
+//
+//   // 2️⃣ 安排每帧 flush
+//   scheduleFlush()
+// }
+const pendingChanges = new Map<number, any>()
+let flushScheduled = false
+
+const flushPendingChanges = () => {
+  flushScheduled = false
+  if (pendingChanges.size === 0) return
+
+  pendingChanges.forEach((params) => {
+    emit('formChange', params)
+  })
+  pendingChanges.clear()
+}
+
+const scheduleFlush = (useIdle = false) => {
+  if (flushScheduled) return
+  flushScheduled = true
+
+  if (useIdle && 'requestIdleCallback' in window) {
+    // 浏览器空闲时 flush，超时时间 100ms 避免长时间延迟
+    requestIdleCallback(flushPendingChanges, { timeout: 16 })
+  } else {
+    // 默认每帧 flush，保证输入丝滑
+    requestAnimationFrame(flushPendingChanges)
+  }
+}
+
 const handleChange = (
   data: { value: any; prop: string; row: RecordType },
   index: number,
   column: TableColumnCtx<RecordType>,
   item: PlusColumn,
-  rest: RecordType
+  rest: RecordType,
+  options?: { useIdle?: boolean } // 可选 idle 调度
 ) => {
-  const formChangeCallBackParams = {
+  // 1️⃣ 缓存本次变更
+  pendingChanges.set(index, {
     ...data,
     index,
     column: { ...column, ...item },
     rowIndex: index,
     ...rest
-  } as unknown as FormChangeCallBackParams
+  })
 
-  emit('formChange', formChangeCallBackParams)
+  // 2️⃣ 安排 flush
+  scheduleFlush(options?.useIdle)
 }
+
+
 
 // Optimized columns to avoid unnecessary re-renders
 const optimizedColumns = computed(() => {

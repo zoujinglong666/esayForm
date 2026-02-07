@@ -10,7 +10,9 @@ const throwError = (data: unknown) => {
 }
 
 const useGetOptions = (
-  props: PlusColumn
+  props: PlusColumn,
+  row?: Record<string, any> | Ref<Record<string, any>>,
+  rowIndex?: number
 ): {
   customOptions: Ref<OptionsRow[]>
   customOptionsIsReady: Ref<boolean>
@@ -36,28 +38,50 @@ const useGetOptions = (
       }
     )
   } else if (isFunction(props.options)) {
-    // 函数或Promise
-    const getValue = props.options as
-      | ((props: PlusColumn) => Promise<OptionsRow[]>)
-      | ((props: PlusColumn) => OptionsRow[])
-    const result = getValue(props)
-    // 函数返回一个Promise
-    if (isPromise(result)) {
-      // eslint-disable-next-line @typescript-eslint/no-extra-semi
-      ;(result as Promise<OptionsRow[]>)
-        .then((res: OptionsRow[]) => {
-          options.value = res
-          optionsIsReady.value = true
-          throwError(options.value)
-        })
-        .catch((err: unknown) => {
+    // 函数或Promise（支持按行动态变化）
+    const getValue = props.options as any
+
+    const compute = async () => {
+      let result
+
+      // 根据函数参数个数区分新旧签名
+      if (getValue.length === 3) {
+        // 新签名: (row, column, rowIndex)
+        const contextRow = isRef(row) || isReactive(row) ? row : row || { [props.prop]: '' }
+        const valueRow = isRef(contextRow) ? contextRow.value : contextRow
+        const contextIndex = rowIndex !== undefined ? rowIndex : 0
+        result = getValue(valueRow, props, contextIndex)
+      } else {
+        // 旧签名: (props: PlusColumn)
+        result = getValue(props)
+      }
+
+      // 函数返回一个Promise
+      if (isPromise(result)) {
+        const res = await (result as Promise<OptionsRow[]>)
+        options.value = res
+        optionsIsReady.value = true
+        throwError(options.value)
+      } else {
+        // 同步函数
+        options.value = result as OptionsRow[]
+        optionsIsReady.value = true
+      }
+    }
+
+    // 监听 row / options 变化，动态刷新
+    watch(
+      () => [props.options, row],
+      () => {
+        compute().catch((err: unknown) => {
           throw err
         })
-    } else {
-      // 函数
-      options.value = result as OptionsRow[]
-      optionsIsReady.value = true
-    }
+      },
+      {
+        immediate: true,
+        deep: true
+      }
+    )
   } else if (isPromise(props.options)) {
     // 本身是一个Promise
     const getValue = props.options as Promise<OptionsRow[]>

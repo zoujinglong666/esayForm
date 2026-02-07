@@ -156,6 +156,7 @@ import {
   getValue,
   setValue
 } from '@/components/PlusTable/utils'
+import { getFormItemProps } from '@/utils/plus-column-utils'
 import type { PropType, Ref } from 'vue'
 import { ref, watch, computed } from 'vue'
 import type { PlusColumn, RecordType, FieldValues } from '@/components/PlusTable/types'
@@ -205,9 +206,9 @@ const emit = defineEmits(['change'])
 
 const customFieldProps = ref<RecordType>({})
 const formInstance = ref()
-const { customOptions: options } = useGetOptions(props.column)
-const columns: Ref<PlusColumn[]> = ref([])
 const subRow = ref(cloneDeep(props.row))
+const { customOptions: options } = useGetOptions(props.column, subRow, props.index)
+const columns: Ref<PlusColumn[]> = ref([])
 const customFieldPropsIsReady = ref(false)
 const isEdit = ref(false)
 const falseArray = [false, 'click', 'dblclick']
@@ -385,11 +386,21 @@ const displayComponentProps = computed<any>(() => {
 })
 
 watch(
-  () => props.column,
-  (val) => {
-    if (val) {
-      columns.value = [val as PlusColumn]
-    }
+  [() => props.column, () => subRow.value, () => customFieldProps.value, () => options.value, () => props.index],
+  ([column]) => {
+    if (!column) return
+    const baseColumn = column as PlusColumn
+    const rowIndex = (props.index || 0) as number
+    const formItemProps = getFormItemProps(baseColumn, subRow.value, rowIndex)
+
+    columns.value = [
+      {
+        ...baseColumn,
+        fieldProps: customFieldProps.value,
+        formItemProps,
+        options: options.value
+      } as PlusColumn
+    ]
   },
   {
     immediate: true,
@@ -398,14 +409,15 @@ watch(
 )
 
 watch(
-  () => props.column.fieldProps,
-  async (val) => {
+  [() => props.column.fieldProps, () => subRow.value, () => props.index, () => displayValue.value],
+  async ([val]) => {
     const data = await getCustomProps(
       val,
       displayValue.value,
       subRow.value,
       <number>props.index,
-      'fieldProps'
+      'fieldProps',
+      props.column
     )
     customFieldProps.value = data
     customFieldPropsIsReady.value = true

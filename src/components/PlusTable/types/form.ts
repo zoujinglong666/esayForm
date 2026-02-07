@@ -25,7 +25,7 @@ import type {
   ProgressProps
 } from 'element-plus'
 import type { TimeSelectProps } from 'element-plus/es/components/time-select/src/time-select'
-import type { PropsItemType, PlusColumn, OptionsRow, RenderTypes } from './plus'
+import type { PropsItemType, PlusColumn, OptionsRow, RenderTypes, RowAwarePropsItemType, RowAwareBooleanType, RowAwareFunction } from './plus'
 import type { Mutable, RecordType } from './global'
 import {PlusFormProps} from "@/components/PlusForm";
 import {PlusInputTagProps} from "@/components/PlusInputTag/src/index.vue";
@@ -214,14 +214,14 @@ export interface FormColumnProps {
   /**
    * @desc 传递给 el-PlusFormItem 的配置， 支持所有 el-form-item的props。值支持对象 object，computed，函数和 Promise。
    */
-  formItemProps?: PropsItemType<
+  formItemProps?: RowAwarePropsItemType<
     Mutable<FormItemProps> & { [key: string]: any; style?: CSSProperties }
   >
 
   /**
    * @desc 支持类似el-input，el-select等所有表单项的props 以及 表格显示的每行 props。值支持对象 object，computed，函数和 Promise。
    */
-  fieldProps?: PropsItemType<FieldProps>
+  fieldProps?: RowAwarePropsItemType<FieldProps>
 
   /**
    * @desc 自定义渲染 el-PlusFormItem 下的field-item组件。
@@ -265,13 +265,23 @@ export interface FormColumnProps {
   /**
    * 表单中单个项目是否需要 label，默认undefined，优先级高于表单的整体 hasLabel
    */
-  hasLabel?: boolean | Ref<boolean> | ComputedRef<boolean>
+  hasLabel?: RowAwareBooleanType
 
   /**
    * 在详情模式（detailMode）下是否以禁用的表单组件形式展示
    * 默认 false（即显示纯文本）
    */
-  disabledInDetail?: boolean | Ref<boolean> | ComputedRef<boolean>
+  disabledInDetail?: RowAwareBooleanType
+
+  /**
+   * 表单项是否禁用，支持函数形式动态控制
+   */
+  disabled?: RowAwareBooleanType
+
+  /**
+   * 默认值，支持函数形式动态设置
+   */
+  defaultValue?: any | RowAwareFunction<any>
 
   /**
    * @desc 渲染form表单的label

@@ -3,17 +3,16 @@
     <PlusTableTitleBar
       v-if="titleBar"
       :columns="filterColumns"
-      :default-size="size"
       :columns-is-change="columnsIsChange"
+      :default-size="size"
       :title-bar="titleBar"
+      @refresh="handleRefresh"
       @click-density="handleClickDensity"
       @filter-table="handleFilterTableConfirm"
-      @refresh="handleRefresh"
     >
       <template #title>
         <slot name="title"></slot>
       </template>
-
       <template #toolbar>
         <slot name="toolbar"></slot>
       </template>
@@ -21,7 +20,6 @@
       <template v-if="$slots['drag-sort-icon']" #drag-sort-icon>
         <slot name="drag-sort-icon"></slot>
       </template>
-
       <!-- 表格表头 列设置 icon   -->
       <template v-if="$slots['column-settings-icon']" #column-settings-icon>
         <slot name="column-settings-icon"></slot>
@@ -31,19 +29,20 @@
         <slot name="density-icon"></slot>
       </template>
     </PlusTableTitleBar>
-
     <el-table
       ref="tableInstance"
       v-loading="loadingStatus"
-      :reserve-selection="true"
-      :data="__tableData"
-      :border="true"
-      :height="props?.height"
+      :border="props.border"
+      :data="currentTableData"
       :header-cell-style="headerCellStyle"
-      :size="size"
+      :height="props?.height"
+      :reserve-selection="props.reserveSelection"
       :row-key="rowKey"
-      scrollbar-always-on
+      :show-summary="showSummaryComputed"
+      :size="size"
+      :summary-method="summaryMethodComputed"
       highlight-current-row
+      scrollbar-always-on
       v-bind="$attrs"
       @cell-click="handleClickCell"
       @cell-dblclick="handleDoubleClickCell"
@@ -55,10 +54,22 @@
           <el-table-column
             v-if="isSelection"
             key="selection"
+            :align="props.align"
+            :reserve-selection="props.reserveSelection"
             type="selection"
             v-bind="selectionTableColumnProps"
           />
 
+          <el-table-column v-if="isRadio" :align="props.align" type="radio" width="55">
+            <template #default="{ row, $index }">
+              <el-radio
+                v-model="radioValue"
+                :label="$index + 1"
+                v-bind="radioTableColumnProps"
+                @click.stop="radioChangeHandle($event, row, $index + 1)"
+              />
+            </template>
+          </el-table-column>
           <!-- 序号栏 -->
           <PlusTableTableColumnIndex
             v-if="hasIndexColumn"
@@ -70,8 +81,8 @@
           <!-- 拖拽行 -->
           <PlusTableColumnDragSort
             v-if="dragSortable"
-            :sortable="dragSortable"
             :drag-sortable-table-column-props="dragSortableTableColumnProps"
+            :sortable="dragSortable"
             :table-instance="tableInstance"
             @drag-sort-end="handleDragSortEnd"
           >
@@ -79,20 +90,20 @@
               <slot name="drag-sort-icon"></slot>
             </template>
           </PlusTableColumnDragSort>
-
           <!-- 展开行 -->
           <el-table-column v-if="hasExpand" type="expand" v-bind="expandTableColumnProps">
-            <template #default="scoped">
-              <div class="plus-table-expand-col">
-                <slot name="expand" :index="scoped.$index" v-bind="scoped"></slot>
+            <template #default="{ row, $index }">
+              <div class="plus-table-expand-col" @click.stop>
+                <slot :index="$index" :row="row" name="expand"></slot>
               </div>
             </template>
           </el-table-column>
-
           <!--配置渲染栏  -->
           <PlusTableColumn
+            :empty-text="props.emptyText"
             :columns="subColumns"
             :editable="props.editable"
+            :tableData="currentTableData"
             @form-change="handleFormChange"
           >
             <!--表格单元格表头的插槽 -->
@@ -102,7 +113,7 @@
 
             <!--表格单元格的插槽 -->
             <template v-for="(_, key) in cellSlots" :key="key" #[key]="data">
-              <slot :name="key" v-bind="data"></slot>
+              <slot :name="key" v-bind="data" @form-change="handleFormChange"></slot>
             </template>
 
             <!--表单单项的插槽 -->
@@ -129,6 +140,7 @@
           <!-- 操作栏 -->
           <PlusTableActionBar
             v-if="actionBar"
+            :align="props.align"
             v-bind="actionBar"
             @click-action="handleAction"
             @click-action-confirm-cancel="handleClickActionConfirmCancel"
@@ -151,10 +163,10 @@
         <slot name="empty"></slot>
       </template>
     </el-table>
-
     <!-- 分页 -->
     <PlusPagination
-      v-if="pagination"
+      v-if="pagination && props.tableData?.length"
+      ref="paginationInstance"
       v-model="subPageInfo"
       v-bind="pagination"
       @change="handlePaginationChange"
@@ -170,64 +182,71 @@
 </template>
 
 <script lang="ts" setup>
-import { reactive, toRefs, watch, ref, provide, shallowRef, useSlots, unref, computed } from 'vue'
-import type { PlusPaginationProps } from '@/components/PlusPagination'
+import type { Ref } from 'vue'
+import {
+  computed,
+  nextTick,
+  PropType,
+  provide,
+  reactive,
+  ref,
+  shallowRef,
+  toRefs,
+  unref,
+  useSlots,
+  watch
+} from 'vue'
+import type { PlusPaginationInstance, PlusPaginationProps } from '@/components/PlusPagination'
 import { PlusPagination } from '@/components/PlusPagination'
 import {
-  TableFormRefInjectionKey,
-  TableFormFieldRefInjectionKey
+  DefaultPageInfo,
+  TableFormFieldRefInjectionKey,
+  TableFormRefInjectionKey
 } from '@/components/PlusTable/constants'
-import type { Ref, ComputedRef } from 'vue'
-import type { ComponentSize } from 'element-plus/es/constants'
-import type { TableInstance } from 'element-plus'
+import type { ComponentSize, TableInstance } from 'element-plus'
 import { ElTable, ElTableColumn } from 'element-plus'
 
 import type {
+  FormFieldRefsType,
   PageInfo,
   PlusColumn,
-  RecordType,
-  FormFieldRefsType
+  RecordType
 } from '@/components/PlusTable/types'
 import {
-  getTableCellSlotName,
-  getTableHeaderSlotName,
-  getFieldSlotName,
+  filterSlots,
   getExtraSlotName,
-  filterSlots
+  getFieldSlotName,
+  getTableCellSlotName,
+  getTableHeaderSlotName
 } from '@/components/PlusTable/utils'
-import { cloneDeep } from 'lodash-es'
+import { cloneDeep, debounce, isPlainObject } from 'lodash-es'
 import PlusTableActionBar from './table-action-bar.vue'
 import PlusTableColumn from './table-column.vue'
-import PlusTableTableColumnIndex from './table-column-index.vue'
-import PlusTableColumnDragSort from './table-column-drag-sort.vue'
 import PlusTableTitleBar from './table-title-bar.vue'
 import type {
   ButtonsCallBackParams,
-  PlusTableState,
-  PlusTableSelfProps,
-  PlusTableEmits,
-  TableFormRefRow,
-  FormChangeCallBackParams
+  FormChangeCallBackParams,
+  RowLocator,
+  RowSelector,
+  RowUpdater,
+  TableFormRefRow
 } from './type'
 import { isSVGElement } from '@/utils/is'
+import useTableSummary, { ITotalColumns } from '@/hooks/component/useTableSummary'
+import PlusTableColumnDragSort from '@/components/PlusTable/src/table-column-drag-sort.vue'
+import PlusTableTableColumnIndex from '@/components/PlusTable/src/table-column-index.vue'
 
 defineOptions({
   name: 'PlusTable',
   inheritAttrs: false
 })
-const DefaultPageInfo: PageInfo = {
-  page: 1,
-  pageSize: 10
-}
-
 const props = defineProps({
   defaultSize: {
     type: String,
     default: 'default'
   },
   pagination: {
-    type: [Boolean, Object],
-    default: false
+    type: [Boolean, Object]
   },
   actionBar: {
     type: [Boolean, Object],
@@ -245,6 +264,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  isRadio: {
+    type: Boolean,
+    default: false
+  },
   hasExpand: {
     type: Boolean,
     default: false
@@ -254,10 +277,6 @@ const props = defineProps({
     default: false
   },
   tableData: {
-    type: Array,
-    default: () => []
-  },
-  data: {
     type: Array,
     default: () => []
   },
@@ -295,6 +314,12 @@ const props = defineProps({
       width: 40
     })
   },
+  radioTableColumnProps: {
+    type: Object,
+    default: () => ({
+      width: 40
+    })
+  },
   expandTableColumnProps: {
     type: Object,
     default: () => ({})
@@ -302,9 +327,46 @@ const props = defineProps({
   editable: {
     type: [Boolean, String],
     default: false
+  },
+  border: {
+    type: Boolean,
+    default: true
+  },
+  totalColumns: {
+    type: Array as PropType<ITotalColumns[] | string[]>,
+    default: () => []
+  },
+  adaptive: {
+    type: [Boolean, Object],
+    default: false
+  },
+  height: {
+    type: [String, Number],
+    default: undefined
+  },
+  reserveSelection: {
+    type: Boolean,
+    default: true
+  },
+  // 新增props：控制摘要行显示
+  showSummary: {
+    type: Boolean,
+    default: undefined // undefined表示使用内部逻辑
+  },
+  // 新增props：自定义摘要方法
+  summaryMethod: {
+    type: Function,
+    default: undefined // undefined表示使用内部逻辑
+  },
+  align: {
+    type: String,
+    default: 'left'
+  },
+  emptyText: {
+    type: String,
+    default: ''
   }
 })
-
 const emit = defineEmits([
   'clickAction',
   'clickActionConfirmCancel',
@@ -314,13 +376,24 @@ const emit = defineEmits([
   'paginationChange',
   'edited',
   'cell-click',
-  'cell-dblclick'
+  'cell-dblclick',
+  'radio-change'
 ])
-
+const radioValue = ref('')
+const radioChangeHandle = (event: { preventDefault: () => void }, row: any, index: any) => {
+  event.preventDefault()
+  emit('radio-change', row, index)
+  if (radioValue.value === index) {
+    emit('radio-change', {}, -1)
+    radioValue.value = ''
+    return
+  }
+  radioValue.value = index
+}
 const subColumns: Ref<PlusColumn[]> = ref([])
 const columnsIsChange: Ref<boolean> = ref(false)
 const filterColumns: Ref<PlusColumn[]> = ref([])
-const tableInstance = shallowRef<TableInstance | null>(null)
+const tableInstance = ref<TableInstance | null>(null)
 const tableWrapperInstance = ref<HTMLDivElement | null>(null)
 const state = reactive({
   subPageInfo: {
@@ -328,9 +401,7 @@ const state = reactive({
   },
   size: props.defaultSize
 })
-const __tableData: ComputedRef<any[] | undefined> = computed(() =>
-  props.tableData?.length ? props.tableData : props.data
-)
+const currentTableData = computed(() => (props.tableData?.length ? props.tableData : []))
 
 const slots = useSlots()
 
@@ -369,7 +440,9 @@ provide(TableFormFieldRefInjectionKey, formFieldRefs)
 watch(
   () => props.columns,
   (val) => {
-    subColumns.value = val?.filter((item) => unref(item.hideInTable) !== true)
+    subColumns.value = val?.filter(
+      (item) => unref(item.hideInTable) !== true
+    )
     filterColumns.value = cloneDeep(subColumns.value)
     columnsIsChange.value = !columnsIsChange.value
   },
@@ -378,6 +451,29 @@ watch(
     immediate: true
   }
 )
+const hasAdaptive = computed(() => typeof props?.height === 'undefined' && props.adaptive)
+
+// 计算是否显示摘要行
+const showSummaryComputed = computed(() => {
+  // 优先使用外部传入的showSummary
+  if (props.showSummary !== undefined) {
+    return props.showSummary
+  }
+
+  // 使用内部逻辑：当有汇总列时显示
+  return summaryColumns.value?.length > 0
+})
+
+// 计算摘要方法
+const summaryMethodComputed = computed(() => {
+  // 优先使用外部传入的summaryMethod
+  if (props.summaryMethod) {
+    return props.summaryMethod
+  }
+
+  // 使用内部逻辑：当有汇总列时使用getSummaries
+  return summaryColumns.value?.length > 0 ? getSummaries : null
+})
 
 // 发分页改变事件
 const handlePaginationChange = () => {
@@ -405,7 +501,7 @@ const handleClickDensity = (size: ComponentSize) => {
 }
 
 const handleDragSortEnd = (newIndex: number, oldIndex: number) => {
-  emit('dragSortEnd', newIndex, oldIndex)
+  emit('dragSortEnd', { newIndex, oldIndex })
 }
 
 // 刷新
@@ -419,9 +515,8 @@ const handleFormChange = (data: FormChangeCallBackParams) => {
 
 // 保存活动的表单
 const currentForm = ref()
-
 const handleCellEdit = (row: RecordType, column: PlusColumn, type: 'click' | 'dblclick') => {
-  const rowIndex = __tableData.value?.indexOf(row)
+  const rowIndex = currentTableData.value?.indexOf(row)
   const columnIndex = column.index
   const columnConfig = subColumns.value[column.index]
 
@@ -430,9 +525,7 @@ const handleCellEdit = (row: RecordType, column: PlusColumn, type: 'click' | 'db
 
   if (props.editable === type) {
     document.addEventListener('click', handleStopEditClick)
-
     const currentCellForm = formRefs.value[rowIndex][columnIndex]
-
     // 停止上一个表单的编辑状态
     if (currentForm.value) {
       currentForm.value?.stopCellEdit()
@@ -460,14 +553,31 @@ const handleCellEdit = (row: RecordType, column: PlusColumn, type: 'click' | 'db
   }
 }
 
+type CellClickParams = {
+  row: RecordType
+  column: PlusColumn
+  cell: HTMLTableCellElement
+  event: Event
+  type: 'click' | 'dblclick'
+}
+
+const handleCellClick = (params: CellClickParams) => {
+  const { row, column, cell, event, type } = params
+  try {
+    handleCellEdit(row, column, type)
+    emit(`cell-${type}`, row, column, cell, event)
+  } catch (error) {
+    console.error(`Error handling cell ${type}:`, error)
+  }
+}
+
 const handleClickCell = (
   row: RecordType,
   column: PlusColumn,
   cell: HTMLTableCellElement,
   event: Event
 ) => {
-  handleCellEdit(row, column, 'click')
-  emit('cell-click', row, column, cell, event)
+  handleCellClick({ row, column, cell, event, type: 'click' })
 }
 
 const handleDoubleClickCell = (
@@ -476,15 +586,13 @@ const handleDoubleClickCell = (
   cell: HTMLTableCellElement,
   event: Event
 ) => {
-  handleCellEdit(row, column, 'dblclick')
-  emit('cell-dblclick', row, column, cell, event)
+  handleCellClick({ row, column, cell, event, type: 'dblclick' })
 }
 
 // 退出编辑状态
 const handleStopEditClick = (e: MouseEvent) => {
   if (tableWrapperInstance.value && currentForm.value) {
     const wrapperClass = '.el-table__body-wrapper'
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const tbody = tableWrapperInstance?.value?.querySelector(wrapperClass)
     const target = e?.target as HTMLElement
     const cls = Array.from(target.classList).join('.')
@@ -500,10 +608,335 @@ const handleStopEditClick = (e: MouseEvent) => {
 
 const { subPageInfo, size } = toRefs(state)
 
+function handleScrollCloseTooltip() {
+  nextTick(() => {
+    const ele = document.querySelectorAll('.el-tooltip__popper') as NodeListOf<HTMLElement>
+    if (!ele) {
+      return
+    }
+    ele.forEach((item) => {
+      item.style.display = 'none'
+    })
+  })
+}
+
+const summaryColumns = computed(() => {
+  if (props.totalColumns?.length) {
+    return props.totalColumns
+  }
+
+  return props.columns
+    ?.filter((item) => item.summary && !item.hideInTable)
+    .map((item) => ({ column: item.prop }))
+})
+
+const paginationInstance = ref<PlusPaginationInstance | null>(null)
+const { getSummaries } = useTableSummary(summaryColumns.value)
+
+/**
+ * 设置表格自适应高度
+ * 优化点：
+ * 1. 多次 nextTick 确保 DOM 完全渲染
+ * 2. 强制重绘以获取最新位置信息
+ * 3. 增加容错处理
+ * 4. 计算更加精准
+ */
+
+const setAdaptive = async () => {
+  await nextTick()
+  if (!tableInstance.value) return
+
+  requestAnimationFrame(() => {
+    const tableEl = tableInstance.value.$el as HTMLElement
+    if (!tableEl) return
+    const parent = tableEl.parentElement
+    if (!parent) return
+
+    let offsetBottom = 36
+    let paginationHeight = 0
+
+    if (isPlainObject(props.adaptive)) {
+      offsetBottom = props.adaptive.offsetBottom ?? offsetBottom
+    }
+
+    if (paginationInstance.value && props.pagination) {
+      paginationHeight = paginationInstance.value.$el.offsetHeight || 0
+    }
+
+    const availableHeight = window.innerHeight - parent.getBoundingClientRect().top - offsetBottom
+    const tableHeight = Math.max(0, availableHeight - paginationHeight)
+    tableEl.style.height = `${tableHeight}px`
+  })
+}
+
+const debounceSetAdaptive = debounce(
+  setAdaptive,
+  isPlainObject(props.adaptive) ? props.adaptive?.timeout ?? 60 : 60
+)
+/**
+ * 校验整个表格的所有可编辑表单项
+ * @returns Promise<boolean | Error[]> - 如果全部通过返回 true，否则返回错误数组
+ */
+const validateAll = async (): Promise<boolean | any[]> => {
+  const allPromises: Promise<any>[] = []
+
+  // 遍历每一行
+  for (const rowIndex in unref(formRefs)) {
+    const rowForms = unref(formRefs)[rowIndex]
+    if (Array.isArray(rowForms)) {
+      // 遍历该行的每个表单（每个可编辑列）
+      for (const colForm of rowForms) {
+        if (colForm?.formInstance?.value?.validate) {
+          allPromises.push(colForm.formInstance.value.validate().catch((err) => err))
+        }
+      }
+    }
+  }
+
+  if (allPromises.length === 0) {
+    return true // 没有可校验项，默认通过
+  }
+
+  const results = await Promise.all(allPromises)
+  const errors = results.filter((res) => res !== true)
+
+  if (errors.length > 0) {
+    return errors // 返回所有校验失败的错误对象
+  }
+
+  return true
+}
+/**
+ * 校验某一行的所有可编辑表单项
+ * @param rowIndex 行索引
+ * @returns Promise<boolean | Error[]> - 如果全部通过返回 true，否则返回错误数组
+ */
+const validateRow = async (rowIndex: number): Promise<boolean | any[]> => {
+  const rowForms = unref(formRefs)[rowIndex]
+  if (!Array.isArray(rowForms) || rowForms.length === 0) {
+    return true
+  }
+
+  const promises = rowForms
+    .filter((colForm) => colForm?.formInstance?.value?.validate)
+    .map((colForm) => colForm.formInstance.value.validate().catch((err) => err))
+
+  if (promises.length === 0) return true
+
+  const results = await Promise.all(promises)
+  const errors = results.filter((res) => res !== true)
+  return errors.length > 0 ? errors : true
+}
+
+/**
+ * 清除所有表单的校验状态
+ * 清除所有校验的红色错误提示（但保留输入值）。
+ */
+const clearValidateAll = () => {
+  for (const rowIndex in unref(formRefs)) {
+    const rowForms = unref(formRefs)[rowIndex]
+    if (Array.isArray(rowForms)) {
+      for (const colForm of rowForms) {
+        if (colForm?.formInstance?.value?.clearValidate) {
+          colForm.formInstance.value.clearValidate()
+        }
+      }
+    }
+  }
+}
+const resetAll = () => {
+  for (const rowIndex in unref(formRefs)) {
+    const rowForms = unref(formRefs)[rowIndex]
+    if (Array.isArray(rowForms)) {
+      for (const colForm of rowForms) {
+        if (colForm?.formInstance?.value?.resetFields) {
+          colForm.formInstance.value.resetFields()
+        }
+      }
+    }
+  }
+}
+
+const setCellValue = async (
+  rowIndex: number,
+  prop: string,
+  value: any,
+  options?: { clearValidate?: boolean }
+) => {
+  const row = currentTableData.value[rowIndex]
+  if (!row) return
+
+  if (!Object.is(row[prop], value)) {
+    row[prop] = value
+  }
+
+  if (options?.clearValidate !== false) {
+    await nextTick()
+    clearValidateCell(rowIndex, prop)
+  }
+}
+
+const findRowIndex = (locator: RowLocator): number => {
+  const data = currentTableData.value
+
+  // 1️⃣ 索引
+  if (typeof locator === 'number') {
+    return locator >= 0 && locator < data.length ? locator : -1
+  }
+
+  // 2️⃣ 函数
+  if (typeof locator === 'function') {
+    return data.findIndex((row, index) => locator(row, index))
+  }
+
+  // 3️⃣ 对象匹配（key-value 全等）
+  if (typeof locator === 'object') {
+    return data.findIndex((row) => Object.keys(locator).every((key) => row?.[key] === locator[key]))
+  }
+
+  return -1
+}
+
+const setCellRow = async (
+  locator: RowLocator,
+  values: Record<string, any>,
+  options?: { clearValidate?: boolean }
+) => {
+  const rowIndex = findRowIndex(locator)
+  if (rowIndex === -1) return
+
+  const row = currentTableData.value[rowIndex]
+  if (!row || typeof values !== 'object') return
+
+  let changed = false
+  Object.keys(values).forEach((key) => {
+    if (!Object.is(row[key], values[key])) {
+      row[key] = values[key]
+      changed = true
+    }
+  })
+
+  if (changed && options?.clearValidate !== false) {
+    await nextTick()
+    clearValidateRow(rowIndex)
+
+
+  }
+
+  emit('formChange', { row, rowIndex })
+}
+
+const matchRow = (row: RecordType, index: number, locator?: RowLocator) => {
+  if (!locator) return true
+
+  if (Array.isArray(locator)) {
+    return locator.includes(index)
+  }
+
+  if (typeof locator === 'function') {
+    return locator(row, index)
+  }
+
+  if (typeof locator === 'object') {
+    return Object.keys(locator).every((key) => row[key] === locator[key])
+  }
+
+  return false
+}
+
+const diffAndPatchRow = (row: RecordType, patch: Record<string, any>): boolean => {
+  let changed = false
+
+  Object.keys(patch).forEach((key) => {
+    const next = patch[key]
+    const prev = row[key]
+    // Object.is 比 === 更安全（NaN / -0）
+    if (!Object.is(prev, next)) {
+      row[key] = next
+      changed = true
+    }
+  })
+
+  return changed
+}
+
+const updateRows = (
+  locator?: RowLocator,
+  updater?: Record<string, any> | ((row: RecordType, index: number) => Record<string, any>)
+) => {
+  const data = currentTableData.value
+  if (!data?.length) return
+
+  let hitCount = 0
+  let changeCount = 0
+
+  data.forEach((row, index) => {
+    if (!matchRow(row, index, locator)) return
+    hitCount++
+
+    const patch = typeof updater === 'function' ? updater(row, index) : updater
+
+    if (!patch || typeof patch !== 'object') return
+
+    const changed = diffAndPatchRow(row, patch)
+    if (changed) {
+      changeCount++
+    }
+  })
+  // 🔔 只有真的发生变化，才做后续动作
+  if (changeCount > 0) {
+    emit('edited')
+  }
+}
+const clearValidateCell = (rowIndex: number, prop: string) => {
+  const rowForms = unref(formRefs)[rowIndex]
+  if (!Array.isArray(rowForms)) return
+
+  const target = rowForms.find((item) => item?.prop === prop)
+  target?.formInstance?.value?.clearValidate?.()
+}
+const clearValidateRow = (rowIndex: number) => {
+  const rowForms = unref(formRefs)[rowIndex]
+  if (!Array.isArray(rowForms)) return
+
+  rowForms.forEach((colForm) => {
+    colForm?.formInstance?.value?.clearValidate?.()
+  })
+}
+onMounted(() => {
+  window.addEventListener('scroll', handleScrollCloseTooltip)
+  if (hasAdaptive.value) {
+    setAdaptive()
+    window.addEventListener('resize', debounceSetAdaptive)
+  }
+})
+onUnmounted(() => {
+  currentForm.value?.stopCellEdit()
+  currentForm.value = null
+  formRefs.value = {}
+  document.removeEventListener('click', handleStopEditClick)
+  window.removeEventListener('scroll', handleScrollCloseTooltip)
+  if (hasAdaptive.value) {
+    window.removeEventListener('resize', debounceSetAdaptive)
+  }
+})
+
 defineExpose({
   formRefs,
-  tableInstance
+  tableInstance,
+  validateAll,
+  clearValidateAll,
+  validateRow,
+  resetAll,
+
+  //清除某一行校验
+  clearValidateCell,
+  clearValidateRow,
+
+  // 行数据更新某一行
+  setCellValue,
+  setCellRow,
+  // 行数据更新方法 更多用于批量更新
+  updateRows
 })
 </script>
-
-

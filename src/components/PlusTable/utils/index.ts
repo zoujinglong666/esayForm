@@ -43,6 +43,9 @@ const throwError = (data: any, type: string) => {
  * @param props
  * @param value
  * @param row
+ * @param column
+ * @param index
+ * @param type
  * @returns
  */
 export const getCustomProps = async (
@@ -50,7 +53,8 @@ export const getCustomProps = async (
   value: FieldValueType | undefined,
   row: RecordType,
   index: number,
-  type: 'formItemProps' | 'fieldProps'
+  type: 'formItemProps' | 'fieldProps',
+  column?: PlusColumn
 ): Promise<any> => {
   try {
     let data: RecordType = {}
@@ -66,7 +70,15 @@ export const getCustomProps = async (
       data = { ...props }
     } else if (isFunction(props)) {
       // 函数 和  函数返回一个Promise
-      data = await (props as any)(value, params)
+      // 检测函数参数数量来区分新旧签名
+      const func = props as any
+      if (func.length === 3) {
+        // 新签名: (row, column, rowIndex)
+        data = await func(row, column, index)
+      } else {
+        // 旧签名: (value, { row, index })
+        data = await func(value, params)
+      }
     } else if (isPromise(props)) {
       // 本身是一个Promise
       data = await (props as any)

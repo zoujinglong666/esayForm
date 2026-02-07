@@ -313,10 +313,10 @@ const props = defineProps({
 
   label: { type: [String, Number, Boolean, Date, Array, Object, null], default: '' },
   prop: { type: String, required: true },
-  fieldProps: { type: Object, default: () => ({}) },
+  fieldProps: { type: [Object, Function], default: () => ({}) },
   valueType: { type: String, default: undefined },
-  options: { type: Array, default: () => [] },
-  formItemProps: { type: Object, default: () => ({}) },
+  options: { type: [Array, Function, Object], default: () => [] },
+  formItemProps: { type: [Object, Function], default: () => ({}) },
   renderField: { type: Function, default: undefined },
   renderLabel: { type: Function, default: undefined },
   tooltip: { type: [String, Boolean], default: '' },
@@ -574,4 +574,3 @@ defineExpose({
   fieldInstance
 })
 </script>
-

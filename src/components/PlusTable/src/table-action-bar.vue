@@ -51,6 +51,7 @@ import { isFunction, isPlainObject } from '@/utils/is'
 import { TableFormRefInjectionKey } from '@/components/PlusTable/constants'
 import type { ActionBarButtonsRow, ButtonsCallBackParams, TableFormRefRow } from './type'
 import { ElButton, ElIcon, ElLink, ElMessageBox, ElTooltip } from 'element-plus'
+import {useI18n} from '@/hooks/web/useI18n'
 const { t } = useI18n()
 defineOptions({
   name: 'PlusTableActionBar'

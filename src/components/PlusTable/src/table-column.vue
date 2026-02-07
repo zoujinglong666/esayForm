@@ -111,6 +111,8 @@ import type { TableFormRefRow, FormChangeCallBackParams } from './type'
 export interface PlusTableTableColumnProps {
   columns?: PlusColumn[]
   editable?: boolean | 'click' | 'dblclick'
+   emptyText?: string
+   tableData?: RecordType[]
 }
 export interface PlusTableTableColumnEmits {
   (e: 'formChange', data: FormChangeCallBackParams): void

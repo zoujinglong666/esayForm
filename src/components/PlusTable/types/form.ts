@@ -25,7 +25,16 @@ import type {
   ProgressProps
 } from 'element-plus'
 import type { TimeSelectProps } from 'element-plus/es/components/time-select/src/time-select'
-import type { PropsItemType, PlusColumn, OptionsRow, RenderTypes, RowAwarePropsItemType, RowAwareBooleanType, RowAwareFunction } from './plus'
+import type {
+  PropsItemType,
+  PlusColumn,
+  OptionsRow,
+  RenderTypes,
+  RowAwarePropsItemType,
+  RowAwareBooleanType,
+  RowAwareFunction,
+  CellContext
+} from './plus'
 import type { Mutable, RecordType } from './global'
 import {PlusFormProps} from "@/components/PlusForm";
 import {PlusInputTagProps} from "@/components/PlusInputTag/src/index.vue";
@@ -210,7 +219,7 @@ export interface FormColumnProps {
   /**
    * @desc 传递给 PlusForm的配置， 支持所有 el-form的props。值支持对象object。
    */
-  formProps?: PropsItemType<PlusFormProps>
+  formProps?: RowAwarePropsItemType<PlusFormProps>
   /**
    * @desc 传递给 el-PlusFormItem 的配置， 支持所有 el-form-item的props。值支持对象 object，computed，函数和 Promise。
    */
@@ -281,7 +290,7 @@ export interface FormColumnProps {
   /**
    * 默认值，支持函数形式动态设置
    */
-  defaultValue?: any | RowAwareFunction<any>
+  defaultValue?: any | RowAwareFunction<any> | ((value: FieldValueType, data: CellContext) => any)
 
   /**
    * @desc 渲染form表单的label

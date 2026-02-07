@@ -58,29 +58,35 @@ export const getCustomProps = async (
 ): Promise<any> => {
   try {
     let data: RecordType = {}
-    const params = { row, index }
+    const ctx = {
+      row,
+      column: column || row,
+      index,
+      rowIndex: index,
+      prop: column?.prop,
+      valueType: column?.valueType
+    }
 
     if (!props) {
       data = {}
     } else if (isRef(props)) {
-      // computed 支持
       data = props.value as RecordType
     } else if (isPlainObject(props)) {
-      // object 支持
       data = { ...props }
     } else if (isFunction(props)) {
-      // 函数 和  函数返回一个Promise
-      // 检测函数参数数量来区分新旧签名
       const func = props as any
-      if (func.length === 3) {
-        // 新签名: (row, column, rowIndex)
+      const arity = func.length
+
+      if (arity === 3) {
         data = await func(row, column, index)
+      } else if (arity === 2) {
+        data = await func(value, ctx)
+      } else if (arity === 1) {
+        data = await func(value)
       } else {
-        // 旧签名: (value, { row, index })
-        data = await func(value, params)
+        data = await func(value, ctx)
       }
     } else if (isPromise(props)) {
-      // 本身是一个Promise
       data = await (props as any)
     } else {
       data = props

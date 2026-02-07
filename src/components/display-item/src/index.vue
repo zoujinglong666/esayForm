@@ -158,7 +158,7 @@ import {
 } from '@/components/PlusTable/utils'
 import { getFormItemProps, getFormProps, isHideInForm } from '@/utils/plus-column-utils'
 import type { PropType, Ref } from 'vue'
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, unref } from 'vue'
 import type { PlusColumn, RecordType, FieldValues } from '@/components/PlusTable/types'
 import useGetOptions from '@/hooks/component/useGetOptions'
 import { PlusRender } from '@/components/PlusRender'
@@ -208,7 +208,11 @@ const customFieldProps = ref<RecordType>({})
 const rowFormProps = ref<RecordType>({})
 const formInstance = ref()
 const subRow = ref(cloneDeep(props.row))
-const { customOptions: options } = useGetOptions(props.column, subRow, props.index)
+const { customOptions: options } = useGetOptions({
+  column: props.column,
+  row: subRow,
+  index: props.index
+})
 const columns: Ref<PlusColumn[]> = ref([])
 const customFieldPropsIsReady = ref(false)
 const isEdit = ref(false)
@@ -225,23 +229,66 @@ watch(
   }
 )
 
+const columnEditable = computed<boolean | undefined>(() => {
+  const source = (props.column as any).editable
+  if (source === undefined) return undefined
+  const editable = unref(source)
+
+  if (isFunction(editable)) {
+    const row = subRow.value || {}
+    const index = props.index ?? 0
+    const value = (row as any)[props.column.prop]
+    const ctx = {
+      row,
+      column: props.column,
+      index,
+      rowIndex: index,
+      prop: props.column.prop,
+      valueType: props.column.valueType
+    }
+    const arity = (editable as any).length
+
+    try {
+      if (arity === 3) {
+        return !!(editable as any)(row, props.column, index)
+      }
+      if (arity === 2) {
+        return !!(editable as any)(value, ctx)
+      }
+      if (arity === 1) {
+        return !!(editable as any)(value)
+      }
+      return !!(editable as any)(value, ctx)
+    } catch (error) {
+      console.warn('Error evaluating column.editable:', error)
+      return undefined
+    }
+  }
+
+  if (typeof editable === 'boolean') {
+    return editable
+  }
+
+  return !!editable
+})
+
 watch(
-  () => [props.editable, props.column.editable],
-  () => {
-    if (props.column.editable === true) {
+  () => [props.editable, columnEditable.value],
+  ([tableEditable, colEditable]) => {
+    if (colEditable === true) {
       isEdit.value = true
       return
     }
-    if (props.column.editable === false) {
+    if (colEditable === false) {
       isEdit.value = false
       return
     }
 
-    if (props.editable === true) {
+    if (tableEditable === true) {
       isEdit.value = true
       return
     }
-    if (falseArray.includes(props.editable)) {
+    if (falseArray.includes(tableEditable as any)) {
       isEdit.value = false
       return
     }
@@ -253,7 +300,7 @@ watch(
 
 const hasEditIcon = computed(
   () =>
-    (props.editable === 'click' || props.editable === 'dblclick') && props.column.editable !== false
+    (props.editable === 'click' || props.editable === 'dblclick') && columnEditable.value !== false
 )
 
 /** 多层值支持，原始值 */
@@ -387,16 +434,25 @@ const displayComponentProps = computed<any>(() => {
 })
 
 watch(
-  [() => props.column, () => subRow.value, () => customFieldProps.value, () => options.value, () => props.index],
+  [() => props.column, () => subRow.value, () => customFieldProps.value, () => options.value],
   ([column]) => {
     if (!column) return
     const baseColumn = column as PlusColumn
-    const rowIndex = (props.index || 0) as number
-    const formProps = getFormProps(baseColumn, subRow.value, rowIndex)
-    const formItemProps = getFormItemProps(baseColumn, subRow.value, rowIndex)
-    const hideInForm = isHideInForm(baseColumn, subRow.value, rowIndex)
+    const formProps = getFormProps(baseColumn, subRow.value, props.index ?? 0)
+    const formItemProps = getFormItemProps(baseColumn, subRow.value, props.index ?? 0)
+    const hideInForm = isHideInForm(baseColumn, subRow.value, props.index ?? 0)
 
-    rowFormProps.value = formProps
+    const normalizedFormProps: Record<string, any> = {
+      ...(formProps || {})
+    }
+
+    if (Array.isArray(normalizedFormProps.rules)) {
+      normalizedFormProps.rules = {
+        [baseColumn.prop]: normalizedFormProps.rules
+      }
+    }
+
+    rowFormProps.value = normalizedFormProps
 
     columns.value = [
       {
@@ -463,7 +519,7 @@ const handleChange = (values: FieldValues) => {
 }
 
 const startCellEdit = () => {
-  if (props.column?.editable === false) {
+  if (columnEditable.value === false) {
     isEdit.value = false
     return
   }
@@ -471,7 +527,7 @@ const startCellEdit = () => {
 }
 
 const stopCellEdit = () => {
-  if (props.column?.editable === true) {
+  if (columnEditable.value === true) {
     isEdit.value = true
     return
   }

@@ -353,3 +353,14 @@ defineExpose({
 })
 </script>
 
+<style lang="scss" scoped>
+
+:deep(.plus-form .el-form-item__error),
+:deep(.el-form .el-form-item__error) {
+  position: static !important;
+}
+
+
+
+</style>
+

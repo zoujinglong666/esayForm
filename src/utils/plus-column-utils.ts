@@ -13,16 +13,27 @@ export const getFieldProps = (
 ): Record<string, any> => {
   const props = column.fieldProps
   if (typeof props === 'function') {
-    // Try new function signature, fallback to old if it fails
     try {
       const func = props as any
-      if (func.length === 3) {
-        // New signature: (row, column, rowIndex)
+      const value = row[column.prop]
+      const ctx = {
+        row,
+        column,
+        index: rowIndex,
+        rowIndex,
+        prop: column.prop,
+        valueType: column.valueType
+      }
+      const arity = func.length
+
+      if (arity === 3) {
         return func(row, column, rowIndex) || {}
+      } else if (arity === 2) {
+        return func(value, ctx) || {}
+      } else if (arity === 1) {
+        return func(value) || {}
       } else {
-        // Old signature: (value, { row, index })
-        const value = row[column.prop]
-        return func(value, { row, index: rowIndex }) || {}
+        return func(value, ctx) || {}
       }
     } catch (error) {
       console.warn('Error calling fieldProps function:', error)
@@ -42,16 +53,27 @@ export const getFormProps = (
 ): Record<string, any> => {
   const props = column.formProps
   if (typeof props === 'function') {
-    // Try new function signature, fallback to old if it fails
     try {
       const func = props as any
-      if (func.length === 3) {
-        // New signature: (row, column, rowIndex)
+      const value = row[column.prop]
+      const ctx = {
+        row,
+        column,
+        index: rowIndex,
+        rowIndex,
+        prop: column.prop,
+        valueType: column.valueType
+      }
+      const arity = func.length
+
+      if (arity === 3) {
         return func(row, column, rowIndex) || {}
+      } else if (arity === 2) {
+        return func(value, ctx) || {}
+      } else if (arity === 1) {
+        return func(value) || {}
       } else {
-        // Old signature: (value, { row, index })
-        const value = row[column.prop]
-        return func(value, { row, index: rowIndex }) || {}
+        return func(value, ctx) || {}
       }
     } catch (error) {
       console.warn('Error calling formProps function:', error)
@@ -73,13 +95,25 @@ export const getFormItemProps = (
   if (typeof props === 'function') {
     try {
       const func = props as any
-      if (func.length === 3) {
-        // New signature: (row, column, rowIndex)
+      const value = row[column.prop]
+      const ctx = {
+        row,
+        column,
+        index: rowIndex,
+        rowIndex,
+        prop: column.prop,
+        valueType: column.valueType
+      }
+      const arity = func.length
+
+      if (arity === 3) {
         return func(row, column, rowIndex) || {}
+      } else if (arity === 2) {
+        return func(value, ctx) || {}
+      } else if (arity === 1) {
+        return func(value) || {}
       } else {
-        // Old signature: (value, { row, index })
-        const value = row[column.prop]
-        return func(value, { row, index: rowIndex }) || {}
+        return func(value, ctx) || {}
       }
     } catch (error) {
       console.warn('Error calling formItemProps function:', error)
@@ -130,16 +164,34 @@ export const isDisabled = (
   row: RecordType,
   rowIndex: number
 ): boolean => {
-  // Check if disabled exists in fieldProps function
   const fieldProps = getFieldProps(column, row, rowIndex)
   if (fieldProps && typeof fieldProps.disabled !== 'undefined') {
     return !!fieldProps.disabled
   }
-  
-  // Check standalone disabled property
   const dis = column.disabled
   if (typeof dis === 'function') {
-    return !!dis(row, column, rowIndex)
+    const func = dis as any
+    const value = row[column.prop]
+    const ctx = {
+      row,
+      column,
+      index: rowIndex,
+      rowIndex,
+      prop: column.prop,
+      valueType: column.valueType
+    }
+    const arity = func.length
+
+    if (arity === 3) {
+      return !!func(row, column, rowIndex)
+    }
+    if (arity === 2) {
+      return !!func(value, ctx)
+    }
+    if (arity === 1) {
+      return !!func(value)
+    }
+    return !!func(value, ctx)
   }
   return !!unref(dis)
 }
@@ -154,7 +206,28 @@ export const isHideInForm = (
 ): boolean => {
   const hide = column.hideInForm
   if (typeof hide === 'function') {
-    return !!hide(row, column, rowIndex)
+    const func = hide as any
+    const value = row[column.prop]
+    const ctx = {
+      row,
+      column,
+      index: rowIndex,
+      rowIndex,
+      prop: column.prop,
+      valueType: column.valueType
+    }
+    const arity = func.length
+
+    if (arity === 3) {
+      return !!func(row, column, rowIndex)
+    }
+    if (arity === 2) {
+      return !!func(value, ctx)
+    }
+    if (arity === 1) {
+      return !!func(value)
+    }
+    return !!func(value, ctx)
   }
   return !!unref(hide)
 }
@@ -169,7 +242,28 @@ export const isHideInTable = (
 ): boolean => {
   const hide = column.hideInTable
   if (typeof hide === 'function') {
-    return !!hide(row, column, rowIndex)
+    const func = hide as any
+    const value = row[column.prop]
+    const ctx = {
+      row,
+      column,
+      index: rowIndex,
+      rowIndex,
+      prop: column.prop,
+      valueType: column.valueType
+    }
+    const arity = func.length
+
+    if (arity === 3) {
+      return !!func(row, column, rowIndex)
+    }
+    if (arity === 2) {
+      return !!func(value, ctx)
+    }
+    if (arity === 1) {
+      return !!func(value)
+    }
+    return !!func(value, ctx)
   }
   return !!unref(hide)
 }
@@ -184,7 +278,28 @@ export const getDefaultValue = (
 ): any => {
   const def = column.defaultValue
   if (typeof def === 'function') {
-    return def(row, column, rowIndex)
+    const func = def as any
+    const value = row[column.prop]
+    const ctx = {
+      row,
+      column,
+      index: rowIndex,
+      rowIndex,
+      prop: column.prop,
+      valueType: column.valueType
+    }
+    const arity = func.length
+
+    if (arity === 3) {
+      return func(row, column, rowIndex)
+    }
+    if (arity === 2) {
+      return func(value, ctx)
+    }
+    if (arity === 1) {
+      return func(value)
+    }
+    return func(value, ctx)
   }
   return def
 }
@@ -199,7 +314,28 @@ export const getLabel = (
 ): string => {
   const label = column.label
   if (typeof label === 'function') {
-    return label(row, column, rowIndex)
+    const func = label as any
+    const value = row[column.prop]
+    const ctx = {
+      row,
+      column,
+      index: rowIndex,
+      rowIndex,
+      prop: column.prop,
+      valueType: column.valueType
+    }
+    const arity = func.length
+
+    if (arity === 3) {
+      return func(row, column, rowIndex)
+    }
+    if (arity === 2) {
+      return func(value, ctx)
+    }
+    if (arity === 1) {
+      return func(value)
+    }
+    return func(value, ctx)
   }
   return unref(label) || ''
 }

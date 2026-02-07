@@ -238,10 +238,12 @@
 //     getTableData
 //   }
 // }
-import { Ref, nextTick } from 'vue'
+import { Ref, unref } from 'vue'
 import { clone } from 'lodash-es'
+import type { PlusTableRowApi } from '@/components/PlusTable/src/type'
 
 /* ====================== 类型定义 ====================== */
+type MaybeRefArray<T> = Ref<T[]> | T[]
 type Matcher<T> =
   | number[]
   | Partial<T>
@@ -283,8 +285,8 @@ interface WatchRule<T> {
 
 /* ====================== Hook ====================== */
 export function usePlusTableRowWatcher<T>(
-  plusTableRef: Ref<any>,
-  tableData: Ref<T[]>,
+  plusTableRef: Ref<PlusTableRowApi | null>,
+  tableData: MaybeRefArray<T>,
   globalOpt?: { debug?: boolean }
 ) {
   /* ---------- rule store ---------- */
@@ -356,17 +358,24 @@ export function usePlusTableRowWatcher<T>(
   }
 
   /* ====================== form-change 入口 ====================== */
-  const onFormChange = ({ prop, value, index }: any) => {
-    const row = unref(tableData)[index]
+  const onFormChange = ({ prop, value, index }: { prop: keyof T; value: any; index: number }) => {
+    const rows = unref(tableData) as T[]
+    const row = rows[index]
     if (!row) return
 
-    const prev = row[prop]
+    const prev = (row as any)[prop as keyof T]
     if (!Object.is(prev, value)) {
-      row[prop] = value
+      ;(row as any)[prop] = value
     }
 
-    const key = makeKey(index, prop)
-    triggerQueue.set(key, { prop, value, oldValue: prev, index, diff: { [prop]: value } })
+    const key = makeKey(index, String(prop))
+    triggerQueue.set(key, {
+      prop: prop as string,
+      value,
+      oldValue: prev,
+      index,
+      diff: { [prop]: value } as Partial<T>
+    })
 
     if (!flushScheduled) {
       flushScheduled = true
@@ -394,7 +403,8 @@ export function usePlusTableRowWatcher<T>(
   /* ====================== 执行规则 ====================== */
   const runRules = (trigger: Trigger, lane: RowWatchFlush) => {
     const { prop, value, oldValue, index, diff } = trigger
-    const row = tableData.value[index]
+    const rows = unref(tableData)
+    const row = rows[index]
     if (!row) return
 
     const key = makeKey(index, prop)
@@ -420,7 +430,7 @@ export function usePlusTableRowWatcher<T>(
           oldValue,
           row,
           index,
-          diff,
+          diff: diff as Partial<T>,
           setRow: (i, data) => queueSetRow(i, data, rule.flush),
           updateRows: (matcher, data) => {
             plusTableRef.value?.updateRows(matcher, data)
@@ -444,22 +454,23 @@ export function usePlusTableRowWatcher<T>(
   }
 
   /* ====================== 实用方法 ====================== */
-  const getRow = (index: number): T | undefined => tableData.value[index]
+  const getRow = (index: number): T | undefined => (unref(tableData) as T[])[index]
 
   const getRows = (matcher?: Matcher<T>): T[] => {
-    if (!matcher) return tableData.value
+    const rows = unref(tableData) as T[]
+    if (!matcher) return rows
 
-    if (typeof matcher === 'number') return tableData.value[matcher] ? [tableData.value[matcher]] : []
-    if (Array.isArray(matcher)) return matcher.map(i => tableData.value[i]).filter(Boolean)
-    if (typeof matcher === 'function') return tableData.value.filter((row, idx) => matcher(row, idx))
-    if (typeof matcher === 'object') return tableData.value.filter(row =>
-      Object.keys(matcher).every(k => row[k] === (matcher as any)[k])
+    if (typeof matcher === 'number') return rows[matcher] ? [rows[matcher]] : []
+    if (Array.isArray(matcher)) return matcher.map(i => rows[i]).filter(Boolean)
+    if (typeof matcher === 'function') return rows.filter((row, idx) => matcher(row, idx))
+    if (typeof matcher === 'object') return rows.filter(row =>
+      Object.keys(matcher as any).every(k => (row as any)[k] === (matcher as any)[k])
     )
 
     return []
   }
 
-  const getTableData = (): T[] => clone(tableData.value)
+  const getTableData = (): T[] => clone(unref(tableData))
 
   return {
     watchRowChange,

@@ -503,6 +503,15 @@ export type RowLocator =
   | Record<string, any>
   | ((row: RecordType, index: number) => boolean)
 
+export interface PlusTableRowApi {
+  setCellRow: (
+    locator: RowLocator,
+    values: Record<string, any>,
+    options?: { clearValidate?: boolean }
+  ) => void | Promise<void>
+  updateRows: (locator?: RowLocator, updater?: RowUpdater) => void
+}
+
 
 export type RowChangeContext<T> = {
   prop: string

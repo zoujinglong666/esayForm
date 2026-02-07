@@ -1,7 +1,7 @@
 <template>
   <div class="test-row-aware">
     <h2>Test Row-Aware Column Properties</h2>
-    
+
     <!-- Test PlusTable -->
     <div class="section">
       <h3>PlusTable with Row-Aware Properties</h3>
@@ -32,6 +32,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import type { PlusColumn } from '@/components/PlusTable/types'
+import PlusTable from "@/components/PlusTable/src/index.vue";
 
 // Test data for PlusTable
 const tableData = reactive([

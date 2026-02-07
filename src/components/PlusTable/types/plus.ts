@@ -12,6 +12,18 @@ export {}
 export type RenderTypes = string | VNode | JSX.Element | Component
 
 /**
+ * 单元格渲染 / 行感知函数的上下文类型
+ */
+export interface CellContext {
+  row: RecordType
+  column: PlusColumn
+  index: number
+  rowIndex?: number
+  prop?: string
+  valueType?: TableValueType | FormItemValueType
+}
+
+/**
  * 分页参数
  */
 export interface PageInfo {
@@ -31,13 +43,7 @@ export interface PageInfo {
 export type PropsItemType<T extends Record<string, any> = any> =
   | Partial<T>
   | ComputedRef<Partial<T>>
-  | ((
-      value: FieldValueType,
-      data: {
-        row: Record<string, any>
-        index: number
-      }
-    ) => Partial<T> | Promise<Partial<T>>)
+  | ((value: FieldValueType, data: CellContext) => Partial<T> | Promise<Partial<T>>)
   | Promise<Partial<T>>
 
 /**
@@ -79,7 +85,7 @@ export interface OptionsRow<T = undefined> {
 /**
  * 行感知函数类型 - 支持访问整行数据的函数签名
  */
-export type RowAwareFunction<T extends Record<string, any> = any> = (
+export type RowAwareFunction<T = any> = (
   row: RecordType,
   column: PlusColumn,
   rowIndex: number
@@ -93,6 +99,7 @@ export type RowAwareOptionsType =
   | ComputedRef<OptionsRow[]>
   | ((row: RecordType, column: PlusColumn, rowIndex: number) => OptionsRow[] | Promise<OptionsRow[]>)
   | ((props?: PlusColumn) => OptionsRow[] | Promise<OptionsRow[]>)
+  | ((value: FieldValueType, data: CellContext) => OptionsRow[] | Promise<OptionsRow[]>)
   | Promise<OptionsRow[]>
 
 /**
@@ -101,8 +108,7 @@ export type RowAwareOptionsType =
 export type RowAwarePropsItemType<T extends Record<string, any> = any> =
   | Partial<T>
   | ComputedRef<Partial<T>>
-  | ((value: FieldValueType, data: { row: Record<string, any>; index: number }) => Partial<T> | Promise<Partial<T>>)
-  | RowAwareFunction<Partial<T> | Promise<Partial<T>>>
+  | ((value: FieldValueType, data: CellContext) => Partial<T> | Promise<Partial<T>>)
   | Promise<Partial<T>>
 
 /**
@@ -113,6 +119,7 @@ export type RowAwareBooleanType =
   | Ref<boolean>
   | ComputedRef<boolean>
   | RowAwareFunction<boolean>
+  | ((value: FieldValueType, data: CellContext) => boolean)
 
 /**
  * 行感知的字符串类型
@@ -121,6 +128,7 @@ export type RowAwareStringType =
   | string
   | ComputedRef<string>
   | RowAwareFunction<string>
+  | ((value: FieldValueType, data: CellContext) => string)
 
 /**
  * 选择类型   支持数组，computed，函数和Promise
@@ -130,6 +138,7 @@ export type OptionsType =
   | ComputedRef<OptionsRow[]>
   | ((props?: PlusColumn) => OptionsRow[] | Promise<OptionsRow[]>)
   | ((row: RecordType, column: PlusColumn, rowIndex: number) => OptionsRow[] | Promise<OptionsRow[]>)
+  | ((value: FieldValueType, data: CellContext) => OptionsRow[] | Promise<OptionsRow[]>)
   | Promise<OptionsRow[]>
 /**
  * 共享类型
@@ -141,7 +150,7 @@ export interface CommonType {
    *  @version v0.0.10 修改为可选
    *  @version v0.1.0 类型新增ComputedRef<string>
    */
-  label?: string | ComputedRef<string> | RowAwareFunction<string>
+  label?: RowAwareStringType
   /**
    * 表格对应列内容的字段名 ；在form 中是 el-input等所有表单项的双向绑定的值；在descriptions 是 el-descriptions-item的值对应的字段；
    */
@@ -158,9 +167,10 @@ export interface CommonType {
 
   /**
    * @desc 当开启时  valueType 为 `FormItemValueType` 其中之一时 表格中显示的是对应的可编辑的表单
+   *        支持布尔值和行感知函数 (row, column, rowIndex) => boolean
    * @default false
    */
-  editable?: boolean
+  editable?: RowAwareBooleanType
 
   /**
    * @desc 值的类型
@@ -224,7 +234,7 @@ export interface CommonType {
    *
    * ```
    */
-  render?: (value: any, data: { row: RecordType; column: PlusColumn; index: number }) => RenderTypes
+  render?: (value: any, data: CellContext) => RenderTypes
 
   /**
    * @desc  自定义渲染单行显示内容 需要返回一个 html字符串，`renderHTML`的优先级低于`render`，高于`valueType`。
@@ -247,7 +257,7 @@ export interface CommonType {
    *
    *```
    */
-  renderHTML?: (value: any, data: { row: RecordType; column: PlusColumn; index: number }) => string
+  renderHTML?: (value: any, data: CellContext) => string
 
   /**
    * @desc 渲染table表单的Header

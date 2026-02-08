@@ -107,7 +107,15 @@
     </slot>
 
     <div v-if="hasFooter" :style="style" class="plus-form__footer">
-      <slot name="footer" v-bind="{ handleReset, handleSubmit }">
+      <slot
+        name="footer"
+        v-bind="{
+          handleReset,
+          handleSubmit,
+          isShowUnfold,
+          handleUnfold
+        }"
+      >
         <el-button :loading="submitLoading" type="primary" @click="handleSubmit">
           <Icon icon="ep:search" />
           {{ submitText || t('plus.form.submitText') }}
@@ -116,6 +124,20 @@
           <Icon icon="ep:refresh" />
           {{ resetText || t('plus.form.resetText') }}
         </el-button>
+        <el-link
+          v-if="unfoldVisible"
+          class="plus-form__unfold"
+          type="primary"
+          :underline="false"
+          href="javascript:;"
+          @click.prevent="handleUnfold"
+        >
+          {{ isShowUnfold ? t('plus.search.retract') : t('plus.search.expand') }}
+          <el-icon>
+            <ArrowUp v-if="isShowUnfold" />
+            <ArrowDown v-else />
+          </el-icon>
+        </el-link>
       </slot>
     </div>
   </el-form>
@@ -136,7 +158,7 @@ import {
 } from 'vue'
 import type { PropType } from 'vue'
 import type { FormInstance } from 'element-plus'
-import { ElButton, ElCard, ElForm, ElIcon } from 'element-plus'
+import { ElButton, ElCard, ElForm, ElIcon, ElLink } from 'element-plus'
 import type { FieldValues, PlusColumn } from '@/components/PlusTable/types'
 import {
   filterSlots,
@@ -146,7 +168,7 @@ import {
   getValue,
   setValue
 } from '@/components/PlusTable/utils'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import { isFunction, isEqual } from '@/utils/is'
 import PlusFormContent from '@/components/PlusForm/src/form-content.vue'
 import CustomFormContent from '@/components/PlusQuery/src/custom-form-content.vue'
@@ -198,7 +220,9 @@ const props = defineProps({
   cardProps: { type: Object, default: () => ({}) },
   prevent: { type: Boolean, default: false },
   itemGap: { type: String, default: '16px' },
-  persistKey: { type: String, default: '' }
+  persistKey: { type: String, default: '' },
+  hasUnfold: { type: Boolean, default: false },
+  showNumber: { type: Number, default: 8 }
 })
 
 const emit = defineEmits([
@@ -222,6 +246,7 @@ const collapseState = reactive<Record<string, boolean>>({})
 const lastEmitValues = ref<Record<string, any> | null>(null)
 const lastEmitAt = ref(0)
 const isSubmitting = ref(false)
+const isShowUnfold = ref(false)
 
 // ========================
 // 工具函数
@@ -344,6 +369,15 @@ const processedSubGroup = computed(() => {
   return subGroup.value
 })
 
+const originDisplayedSubColumns = computed(() =>
+  processedSubColumns.value.filter(isColumnShownInQuery)
+)
+
+const unfoldVisible = computed(() => {
+  if (!props.hasUnfold) return false
+  return originDisplayedSubColumns.value.length > props.showNumber
+})
+
 const isColumnShownInQuery = (col: EnhancedPlusColumn) => {
   const showInQuery = (col as any).showInQuery as unknown
   if (showInQuery === undefined) return true
@@ -352,7 +386,12 @@ const isColumnShownInQuery = (col: EnhancedPlusColumn) => {
   return true
 }
 
-const displayedSubColumns = computed(() => processedSubColumns.value.filter(isColumnShownInQuery))
+const displayedSubColumns = computed(() => {
+  if (props.hasUnfold && !isShowUnfold.value) {
+    return originDisplayedSubColumns.value.slice(0, props.showNumber)
+  }
+  return originDisplayedSubColumns.value
+})
 
 const displayedSubGroup = computed(() => {
   if (!processedSubGroup.value) return null
@@ -379,7 +418,7 @@ const allDisplayedColumns = computed<EnhancedPlusColumn[]>(() => {
   if (displayedSubGroup.value) {
     return displayedSubGroup.value.flatMap((group) => group.columns)
   }
-  return displayedSubColumns.value
+  return originDisplayedSubColumns.value
 })
 
 const originAttrs = useAttrs()
@@ -760,6 +799,12 @@ const handleReset = (): void => {
 const handleValidate = (...args: any[]): void => {
   emit('validate', ...args)
 }
+
+const handleUnfold = () => {
+  if (!props.hasUnfold) return
+  isShowUnfold.value = !isShowUnfold.value
+}
+
 // 表单规则
 const registerRules = ref<Record<string, any>>({})
 const createFormRules = (value: PlusColumn[]) => {
@@ -808,7 +853,8 @@ defineExpose({
   clearValidate,
   validate,
   handleSubmit,
-  handleReset
+  handleReset,
+  handleUnfold
 })
 
 onUnmounted(() => {

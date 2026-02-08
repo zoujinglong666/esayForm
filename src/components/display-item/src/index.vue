@@ -217,7 +217,7 @@ const columns: Ref<PlusColumn[]> = ref([])
 const customFieldPropsIsReady = ref(false)
 const isEdit = ref(false)
 const falseArray = [false, 'click', 'dblclick']
-const statusValueTypes: (string | undefined)[] = ['select', 'radio', 'checkbox']
+const statusValueTypes: (string | undefined)[] = ['select', 'radio', 'checkbox','data-select']
 
 watch(
   () => props.row,

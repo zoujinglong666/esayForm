@@ -122,7 +122,10 @@ const getHasLabel = (hasLabel?: boolean | Ref<boolean> | ComputedRef<boolean>) =
 watch(
   () => props.modelValue,
   (val) => {
-    values.value = val
+    values.value = {
+      ...val
+    }
+
   },
   {
     immediate: true

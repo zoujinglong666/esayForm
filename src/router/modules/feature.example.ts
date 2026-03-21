@@ -80,6 +80,24 @@ const routes: RouteRecordRaw = {
         cache: true,
       },
     },
+    {
+      path: 'basic-data-management',
+      name: 'featureExampleBasicDataManagement',
+      component: () => import('@/views/feature_example/basic-data-management.vue'),
+      meta: {
+        title: '基础数据管理',
+        icon: 'mdi:database-outline',
+      },
+    },
+    {
+      path: 'basic-data-v2',
+      name: 'featureExampleBasicDataV2',
+      component: () => import('@/views/feature_example/basic-data-v2.vue'),
+      meta: {
+        title: '基础数据管理 v2.0',
+        icon: 'mdi:database-alert',
+      },
+    },
   ],
 }
 

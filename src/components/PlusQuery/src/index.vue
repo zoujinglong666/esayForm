@@ -573,48 +573,61 @@ watch(
   { immediate: true, deep: true }
 )
 
-// 监听columns变化，自动合并字段的defaultValue到defaultValues
+// 监听columns变化，自动合并字段的defaultValue到values
 watch(
   () => props.columns,
   (columns) => {
     if (columns && columns.length > 0) {
-      const mergedDefaults = { ...props.defaultValues }
+      let hasChanges = false
+      const newValues = { ...values.value }
 
       // 递归处理列配置，提取defaultValue
       const extractDefaultValues = (cols: any[]) => {
         cols.forEach((col) => {
-          // 如果当前字段有defaultValue且defaultValues中没有该字段，则添加
-          if (col.defaultValue !== undefined && mergedDefaults[col.prop] === undefined) {
-            mergedDefaults[col.prop] = col.defaultValue
+          // 如果当前字段有defaultValue且当前值为空，则应用
+          if (
+            col.defaultValue !== undefined &&
+            (newValues[col.prop] === undefined ||
+              newValues[col.prop] === '' ||
+              newValues[col.prop] === null)
+          ) {
+            newValues[col.prop] = col.defaultValue
+            hasChanges = true
           }
 
           // 如果有子字段，也处理子字段的defaultValue
           if (
             col.children &&
             col.children.defaultValue !== undefined &&
-            mergedDefaults[col.children.prop] === undefined
+            (newValues[col.children.prop] === undefined ||
+              newValues[col.children.prop] === '' ||
+              newValues[col.children.prop] === null)
           ) {
-            mergedDefaults[col.children.prop] = col.children.defaultValue
+            newValues[col.children.prop] = col.children.defaultValue
+            hasChanges = true
           }
         })
       }
 
       extractDefaultValues(columns)
 
-      // 如果有新的默认值，更新values和modelValue
-      if (JSON.stringify(mergedDefaults) !== JSON.stringify(props.defaultValues)) {
-        // 更新values中的默认值
-        for (const key in mergedDefaults) {
+      // 处理 props.defaultValues 中的默认值
+      if (props.defaultValues && Object.keys(props.defaultValues).length > 0) {
+        Object.keys(props.defaultValues).forEach((key) => {
           if (
-            values.value[key] === '' ||
-            values.value[key] === undefined ||
-            values.value[key] === null
+            newValues[key] === undefined ||
+            newValues[key] === '' ||
+            newValues[key] === null
           ) {
-            values.value[key] = mergedDefaults[key]
+            newValues[key] = props.defaultValues[key]
+            hasChanges = true
           }
-        }
+        })
+      }
 
-        // 触发update:modelValue事件
+      // 如果有新的默认值被应用，更新values并同步到父组件
+      if (hasChanges) {
+        values.value = newValues
         emitChange()
       }
     }

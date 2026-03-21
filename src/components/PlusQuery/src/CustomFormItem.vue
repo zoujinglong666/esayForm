@@ -1,4 +1,5 @@
 <template>
+  {{prop}}
   <el-form-item
     v-if="valueIsReady"
     ref="formItemInstance"
@@ -163,6 +164,7 @@
       v-bind="commonProps"
       @update:model-value="handleChange"
     >
+      {{state}}
       <template v-for="(fieldSlot, key) in fieldSlots" :key="key" #[key]="data">
         <component :is="fieldSlot" :model-value="state" :column="params" v-bind="data" />
       </template>

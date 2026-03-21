@@ -51,7 +51,7 @@ onMounted(() => {
       }"
     />
     <div
-      ref="subSidebarRef" class="sub-sidebar flex-1 transition-shadow-300" :class="{
+      ref="subSidebarRef" class="sub-sidebar transition-shadow-300" :class="{
         'shadow-top': showShadowTop,
         'shadow-bottom': showShadowBottom,
       }" @scroll="onSidebarScroll"
@@ -114,16 +114,16 @@ onMounted(() => {
   }
 
   .sub-sidebar {
-    overflow: hidden auto;
+    overflow:  auto;
     overscroll-behavior: contain;
 
-    // firefox隐藏滚动条
-    scrollbar-width: none;
-
-    // chrome隐藏滚动条
-    &::-webkit-scrollbar {
-      display: none;
-    }
+    //// firefox隐藏滚动条
+    //scrollbar-width: none;
+    //
+    //// chrome隐藏滚动条
+    //&::-webkit-scrollbar {
+    //  display: none;
+    //}
 
     &.shadow-top {
       box-shadow: inset 0 10px 10px -10px var(--g-box-shadow-color), inset 0 0 0 transparent;

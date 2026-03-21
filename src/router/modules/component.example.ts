@@ -110,6 +110,47 @@ const routes: RouteRecordRaw = {
             title: '动态表单',
           },
         },
+        {
+          path: 'spin-demo',
+          name: 'componentExampleExtendSpinDemo',
+          component: () => import('@/views/component_extend_example/spinDemo.vue'),
+          meta: {
+            title: '加载状态',
+          },
+        },
+        {
+          path: 'print-demo',
+          name: 'componentExampleExtendPrintDemo',
+          component: () => import('@/views/component_extend_example/printDemo.vue'),
+          meta: {
+            title: '打印示例',
+          },
+        },
+        {
+          path: 'print-demo2',
+          name: 'componentExampleExtendPrintDemo2',
+          component: () => import('@/views/component_extend_example/printDemo2.vue'),
+          meta: {
+            title: '打印示例2',
+          },
+        },
+        {
+          path: 'detail-form',
+          name: 'componentExampleExtendDetailForm',
+          component: () => import('@/views/component_extend_example/detailForm.vue'),
+          meta: {
+            title: '详情表单',
+            cache: false, // 修复：禁用详情表单缓存，避免状态污染
+          },
+        },
+        {
+          path: 'test-detail-form',
+          name: 'componentExampleExtendTestDetailForm',
+          component: () => import('@/views/component_extend_example/testDetailForm.vue'),
+          meta: {
+            title: '测试详情表单',
+          },
+        },
       ],
     },
   ],

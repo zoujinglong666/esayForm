@@ -7,7 +7,7 @@
         :class="{ 'custom-form-item': !!item.children }"
         :has-label="false"
         :model-value="getModelValue(item.prop)"
-        v-bind="item"
+        v-bind="omit(item, ['children', 'defaultValue', 'parentProp'])"
         @change="(value) => handleChange(value, item)"
       >
         <!-- label 插槽 -->
@@ -31,7 +31,7 @@
         <CustomFormItem
           :has-label="false"
           :model-value="getModelValue(getDynamicChildren(item).prop)"
-          v-bind="getDynamicChildren(item)"
+          v-bind="omit(getDynamicChildren(item), ['children', 'defaultValue', 'parentProp'])"
           @change="(value) => handleChange(value, getDynamicChildren(item)!)"
         >
           <!-- label 插槽 -->
@@ -73,6 +73,13 @@ import {
   setValue
 } from '@/components/PlusTable/utils'
 import { getOptionsAsync } from '@/components/PlusQuery/utils'
+
+// 辅助函数：从对象中排除指定属性
+const omit = (obj: Record<string, any>, keys: string[]) => {
+  const result = { ...obj }
+  keys.forEach(key => delete result[key])
+  return result
+}
 
 interface EnhancedPlusColumn extends PlusColumn {
   children?: EnhancedPlusColumn & { parentProp?: string }

@@ -1,7 +1,6 @@
 /**
  * 基础数据适配器
  * 将 API 返回的数据转换为统一的 label/value 格式
- * 支持 nameEn 国际化
  */
 
 import type { BaseDataItem, DictItem } from './types'
@@ -14,8 +13,6 @@ export interface AdapterConfig {
   labelKey?: string
   /** 用作 value 的字段名，默认 'code' */
   valueKey?: string
-  /** 用作英文 label 的字段名，默认 'nameEn' */
-  labelEnKey?: string
   /** 用作 enabled 的字段名，默认 'enabled' */
   enabledKey?: string
   /** enabled 的真值映射（如 status === 1 视为启用） */
@@ -34,19 +31,14 @@ export interface AdapterConfig {
  * // 港口：label 取 portNameCn，value 取 portCode
  * const portAdapter = createAdapter({ labelKey: 'portNameCn', valueKey: 'portCode' })
  *
- * // 国家：label 取 countryName，英文取 countryNameEn，value 取 countryCode
- * const countryAdapter = createAdapter({
- *   labelKey: 'countryName',
- *   labelEnKey: 'countryNameEn',
- *   valueKey: 'countryCode',
- * })
+ * // 国家：label 取 countryName，value 取 countryCode
+ * const countryAdapter = createAdapter({ labelKey: 'countryName', valueKey: 'countryCode' })
  * ```
  */
 export function createAdapter(config: AdapterConfig = {}) {
   const {
     labelKey = 'name',
     valueKey = 'code',
-    labelEnKey = 'nameEn',
     enabledKey = 'enabled',
     enabledTruthy,
   } = config
@@ -54,7 +46,6 @@ export function createAdapter(config: AdapterConfig = {}) {
   return {
     /**
      * 转换 API 响应为标准 BaseDataItem 格式
-     * 保留原始字段，覆盖标准化字段
      */
     transform(response: any): BaseDataItem[] {
       const items = Array.isArray(response) ? response : response?.data || []
@@ -63,7 +54,6 @@ export function createAdapter(config: AdapterConfig = {}) {
         ...item,
         code: item[valueKey] ?? item.code,
         name: item[labelKey] ?? item.name,
-        nameEn: item[labelEnKey] ?? item.nameEn,
         enabled: enabledTruthy !== undefined
           ? item[enabledKey] === enabledTruthy
           : (item[enabledKey] ?? true),
@@ -72,35 +62,24 @@ export function createAdapter(config: AdapterConfig = {}) {
 
     /**
      * 转换为 Element Plus 选项格式 { label, value }
-     * @param data 数据列表
-     * @param useEnglish 是否使用英文名称
      */
-    toOptions<T extends BaseDataItem>(
-      data: T[],
-      useEnglish = false
-    ): Array<{ label: string; value: any }> {
+    toOptions<T extends BaseDataItem>(data: T[]): Array<{ label: string; value: any }> {
       return data.map(item => ({
-        label: String(
-          useEnglish
-            ? (item.nameEn ?? item.name ?? item[labelKey] ?? '')
-            : (item.name ?? item[labelKey] ?? '')
-        ),
+        label: String(item.name ?? item[labelKey] ?? ''),
         value: item.code ?? item[valueKey],
       }))
     },
 
     /**
      * 根据关键词过滤数据
-     * 同时匹配 name、nameEn 和 code
      */
     filterByKeyword<T extends BaseDataItem>(data: T[], keyword: string): T[] {
       if (!keyword) return data
       const lowerKeyword = keyword.toLowerCase()
       return data.filter(
         item =>
-          String(item.name ?? item[labelKey] ?? '').toLowerCase().includes(lowerKeyword) ||
-          String(item.nameEn ?? item[labelEnKey] ?? '').toLowerCase().includes(lowerKeyword) ||
-          String(item.code ?? item[valueKey] ?? '').toLowerCase().includes(lowerKeyword)
+          String(item.name ?? item[labelKey]).toLowerCase().includes(lowerKeyword) ||
+          String(item.code ?? item[valueKey]).toLowerCase().includes(lowerKeyword)
       )
     },
 
@@ -128,49 +107,38 @@ export const BaseAdapter = createAdapter()
 
 /**
  * 字典适配器
- * 专门处理字典数据转换（value/label/labelEn 格式）
+ * 专门处理字典数据转换（value/label 格式）
  */
 export const DictAdapter = {
   /**
    * 转换字典数据
-   * 保留原始字段，覆盖标准化字段
    */
   transform(response: any, dictType?: string): DictItem[] {
     const items = Array.isArray(response) ? response : response?.data || []
 
     return items.map((item: any) => ({
-      ...item,
       value: item.value ?? item.code,
       label: item.label ?? item.name,
-      labelEn: item.labelEn ?? item.nameEn ?? item.label ?? '',
       dictType,
+      ...item,
     }))
   },
 
   /**
    * 转换为 Element Plus 选项格式
-   * @param items 字典项列表
-   * @param useEnglish 是否使用英文标签
    */
-  toOptions(
-    items: DictItem[],
-    useEnglish = false
-  ): Array<{ label: string; value: any }> {
+  toOptions(items: DictItem[]): Array<{ label: string; value: any }> {
     return items.map(item => ({
-      label: String(useEnglish ? (item.labelEn ?? item.label ?? '') : (item.label ?? '')),
+      label: item.label,
       value: item.value,
     }))
   },
 
   /**
    * 根据 value 获取 label
-   * @param items 字典项列表
-   * @param value 要查找的 value
-   * @param useEnglish 是否使用英文标签
    */
-  getLabel(items: DictItem[], value: any, useEnglish = false): string {
+  getLabel(items: DictItem[], value: any): string {
     const item = items.find(i => i.value === value)
-    if (!item) return String(value)
-    return String(useEnglish ? (item.labelEn ?? item.label ?? value) : (item.label ?? value))
+    return item ? item.label : String(value)
   },
 }

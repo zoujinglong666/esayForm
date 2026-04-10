@@ -1,24 +1,24 @@
 /**
- * 基础数据 Hooks
- * 提供各种业务数据的组合式函数
+ * 增强版 Hooks v2.0
+ * 使用增强缓存系统、智能重试、请求合并
  */
 
 import type { BaseDataHookResult, BaseDataItem, QueryParams, CacheConfig } from './types'
 import type { AdapterConfig } from './adapters'
-import { useBasicDataCache } from './cache'
+import { useEnhancedCache, getAllCacheStats, clearAllEnhancedCache } from './cache-enhanced'
 import { createAdapter } from './adapters'
 import { fetchPortList, fetchCountryList, fetchCurrencyList, fetchVesselList } from './api'
 
 /**
- * 创建基础数据 Hook 的工厂函数
- * 所有基础数据 Hook 共享相同的接口和行为
+ * 增强版工厂函数
+ * 整合智能缓存、自动重试、请求合并
  *
  * @param fetchFn 数据获取函数
  * @param adapterConfig 适配器配置（labelKey / valueKey 等）
  * @param cacheConfig 缓存配置
  * @returns 基础数据 Hook
  */
-export function createBaseDataHook(
+export function createEnhancedHook(
   fetchFn: () => Promise<any>,
   adapterConfig: AdapterConfig,
   cacheConfig: CacheConfig
@@ -26,11 +26,24 @@ export function createBaseDataHook(
   const adapter = createAdapter(adapterConfig)
 
   return (params: QueryParams = {}): BaseDataHookResult<BaseDataItem> => {
-    // 使用缓存系统
-    const { data, loading, error, refresh, clearCache } = useBasicDataCache<BaseDataItem[]>(
+    // 使用增强缓存系统
+    const { data, loading, error, refresh, clearCache, timestamp, isExpired } = useEnhancedCache<BaseDataItem[]>(
       cacheConfig.key,
       async () => adapter.transform(await fetchFn()),
-      { ttl: cacheConfig.ttl }
+      {
+        key: cacheConfig.key,
+        ttl: cacheConfig.ttl,
+        strategy: 'hybrid', // 使用混合策略
+        memoryMaxSize: 100,
+        enableLRU: true,
+        enableRetry: true,
+        retryConfig: {
+          maxRetries: 3,
+          retryDelay: 1000,
+          exponentialBackoff: true,
+        },
+        enableMerge: true,
+      }
     )
 
     // 根据参数过滤数据
@@ -61,46 +74,61 @@ export function createBaseDataHook(
       search: (keyword: string) => adapter.filterByKeyword(data.value || [], keyword),
       getByCode: (code: any) => adapter.findByCode(data.value || [], code),
       clearCache,
+      // 缓存状态
+      timestamp,
+      isExpired,
     }
   }
 }
 
 /**
- * 港口数据 Hook
- * label 取 portNameCn，value 取 portCode
+ * 增强版港口数据 Hook
  */
-export const usePorts = createBaseDataHook(
+export const usePortsEnhanced = createEnhancedHook(
   fetchPortList,
   { labelKey: 'portNameCn', valueKey: 'portCode' },
-  { key: 'PORTS', ttl: 10 * 60 * 1000 } // 10 分钟缓存
+  { key: 'PORTS', ttl: 10 * 60 * 1000 }
 )
 
 /**
- * 国家数据 Hook
- * label 取 countryName，value 取 countryCode
+ * 增强版国家数据 Hook
  */
-export const useCountries = createBaseDataHook(
+export const useCountriesEnhanced = createEnhancedHook(
   fetchCountryList,
   { labelKey: 'countryName', valueKey: 'countryCode' },
-  { key: 'COUNTRIES', ttl: 30 * 60 * 1000 } // 30 分钟缓存
+  { key: 'COUNTRIES', ttl: 30 * 60 * 1000 }
 )
 
 /**
- * 货币数据 Hook
- * label 取 currencyName，value 取 currencyCode
+ * 增强版货币数据 Hook
  */
-export const useCurrencies = createBaseDataHook(
+export const useCurrenciesEnhanced = createEnhancedHook(
   fetchCurrencyList,
   { labelKey: 'currencyName', valueKey: 'currencyCode' },
-  { key: 'CURRENCIES', ttl: 60 * 60 * 1000 } // 1 小时缓存
+  { key: 'CURRENCIES', ttl: 60 * 60 * 1000 }
 )
 
 /**
- * 船舶数据 Hook
- * label 取 vesselName，value 取 vesselCode
+ * 增强版船舶数据 Hook
  */
-export const useVessels = createBaseDataHook(
+export const useVesselsEnhanced = createEnhancedHook(
   fetchVesselList,
   { labelKey: 'vesselName', valueKey: 'vesselCode' },
-  { key: 'VESSELS', ttl: 15 * 60 * 1000 } // 15 分钟缓存
+  { key: 'VESSELS', ttl: 15 * 60 * 1000 }
 )
+
+/**
+ * 获取缓存统计信息
+ */
+export function useCacheStats() {
+  const stats = computed(() => {
+    return getAllCacheStats()
+  })
+
+  return {
+    stats,
+    clearAll: async () => {
+      clearAllEnhancedCache()
+    },
+  }
+}

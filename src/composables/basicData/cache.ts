@@ -1,18 +1,9 @@
 /**
  * 基础数据缓存管理
- * 统一实现：TTL + 全局共享 + 版本控制 + LRU + 智能重试 + 请求合并
+ * 实现 TTL 机制 + 全局共享缓存
  */
 
-import type { CacheEntry, CacheStats, RetryConfig } from './types'
-import { LRUCache } from './cache-lru'
-import { RetryManager } from './retry'
-import { RequestMergeManager } from './request-merge'
-
-/**
- * 缓存版本号
- * 数据结构变更时递增，旧缓存自动失效
- */
-const CACHE_VERSION = 3
+import type { CacheEntry, CacheConfig } from './types'
 
 /**
  * 全局缓存存储
@@ -20,30 +11,15 @@ const CACHE_VERSION = 3
 const globalCache = new Map<string, any>()
 
 /**
- * 全局加载 Promise（请求去重）
+ * 全局加载状态
  */
 const loadingPromises = new Map<string, Promise<void>>()
-
-/**
- * 全局 LRU 缓存
- */
-const lruCache = new LRUCache<string, any>(100)
-
-/**
- * 全局请求合并管理器
- */
-const globalRequestMerger = new RequestMergeManager()
-
-/**
- * 缓存统计
- */
-const cacheStats = new Map<string, CacheStats>()
 
 /**
  * 获取缓存存储键
  */
 function getCacheKey(key: string): string {
-  return `basic-data:v${CACHE_VERSION}:${key}`
+  return `basic-data:${key}`
 }
 
 /**
@@ -53,13 +29,7 @@ function readFromStorage<T>(key: string): CacheEntry<T> | null {
   try {
     const storageKey = getCacheKey(key)
     const item = localStorage.getItem(storageKey)
-    if (!item) return null
-    const entry = JSON.parse(item)
-    if (entry._version !== CACHE_VERSION) {
-      localStorage.removeItem(storageKey)
-      return null
-    }
-    return entry
+    return item ? JSON.parse(item) : null
   } catch {
     return null
   }
@@ -71,10 +41,9 @@ function readFromStorage<T>(key: string): CacheEntry<T> | null {
 function writeToStorage<T>(key: string, entry: CacheEntry<T>): void {
   try {
     const storageKey = getCacheKey(key)
-    const dataToStore = { ...entry, _version: CACHE_VERSION }
-    localStorage.setItem(storageKey, JSON.stringify(dataToStore))
+    localStorage.setItem(storageKey, JSON.stringify(entry))
   } catch (e) {
-    console.warn(`[basicData] Failed to write cache: ${e}`)
+    console.warn(`Failed to write cache to localStorage: ${e}`)
   }
 }
 
@@ -86,35 +55,9 @@ function removeFromStorage(key: string): void {
     const storageKey = getCacheKey(key)
     localStorage.removeItem(storageKey)
   } catch (e) {
-    console.warn(`[basicData] Failed to remove cache: ${e}`)
+    console.warn(`Failed to remove cache from localStorage: ${e}`)
   }
 }
-
-/**
- * 清理旧版本缓存
- */
-function cleanupOldCache(): void {
-  try {
-    const currentPrefix = `basic-data:v${CACHE_VERSION}:`
-    const keysToRemove: string[] = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i)
-      // 清理旧版 basic-data 缓存和旧版 enhanced-cache
-      if (k && (
-        (k.startsWith('basic-data:') && !k.startsWith(currentPrefix))
-        || k.startsWith('enhanced-cache:')
-      )) {
-        keysToRemove.push(k)
-      }
-    }
-    keysToRemove.forEach(k => localStorage.removeItem(k))
-  } catch (e) {
-    console.warn(`[basicData] Failed to cleanup old cache: ${e}`)
-  }
-}
-
-// 启动时清理旧版本缓存
-cleanupOldCache()
 
 /**
  * 检查缓存是否过期
@@ -124,176 +67,70 @@ function isExpired(entry: CacheEntry<any>, ttl: number): boolean {
 }
 
 /**
- * 更新缓存统计
- */
-function updateCacheStats(key: string, hit: boolean): void {
-  const stats = cacheStats.get(key)
-  if (stats) {
-    if (hit) {
-      stats.hits++
-    } else {
-      stats.misses++
-    }
-    stats.size = globalCache.size
-    cacheStats.set(key, stats)
-  }
-}
-
-/**
- * 初始化缓存统计
- */
-function initCacheStats(key: string, ttl: number): void {
-  if (!cacheStats.has(key)) {
-    cacheStats.set(key, {
-      key,
-      hits: 0,
-      misses: 0,
-      size: 0,
-      timestamp: Date.now(),
-      ttl,
-      expired: true,
-    })
-  }
-}
-
-/**
  * 带 TTL 的响应式缓存 Hook
- * 统一实现：内存 + localStorage 双层缓存、请求去重、LRU、智能重试、请求合并
- *
- * @param key 缓存键
- * @param fetcher 数据获取函数
- * @param options 缓存配置
+ * 支持过期自动刷新、手动清除、全局共享
  */
 export function useBasicDataCache<T>(
   key: string,
   fetcher: () => Promise<T>,
-  options: {
-    ttl: number
-    strategy?: 'memory' | 'localStorage' | 'hybrid'
-    enableLRU?: boolean
-    enableRetry?: boolean
-    retryConfig?: RetryConfig
-    enableMerge?: boolean
-  } = { ttl: 5 * 60 * 1000 }
+  options: { ttl: number }
 ) {
-  const {
-    ttl,
-    strategy = 'hybrid',
-    enableLRU = false,
-    enableRetry = false,
-    retryConfig = {},
-    enableMerge = true,
-  } = options
-
-  const data = shallowRef<T | null>(null)
+  const data = ref<T | null>(null)
   const loading = ref(false)
   const error = ref<Error | null>(null)
 
-  // 初始化统计
-  initCacheStats(key, ttl)
-
-  /**
-   * 清除缓存
-   */
-  function clearCache(): void {
-    data.value = null
-    globalCache.delete(key)
-    if (enableLRU) {
-      lruCache.delete(key)
-    }
-    if (strategy === 'localStorage' || strategy === 'hybrid') {
-      removeFromStorage(key)
-    }
-    const stats = cacheStats.get(key)
-    if (stats) {
-      stats.expired = true
-      cacheStats.set(key, stats)
-    }
+  // 从 localStorage 读取缓存
+  const getStorageCache = (): CacheEntry<T> | null => {
+    return readFromStorage<T>(key)
   }
 
-  /**
-   * 加载数据
-   */
+  // 写入缓存到 localStorage
+  const setStorageCache = (entry: CacheEntry<T>): void => {
+    writeToStorage(key, entry)
+  }
+
+  // 清除缓存
+  const clearCache = (): void => {
+    data.value = null
+    globalCache.delete(key)
+    removeFromStorage(key)
+  }
+
+  // 检查缓存是否过期
+  const checkExpired = (): boolean => {
+    const cached = getStorageCache()
+    if (!cached) return true
+    return isExpired(cached, options.ttl)
+  }
+
+  // 加载数据（带去重）
   async function load(): Promise<void> {
-    // 1. 请求去重：已有加载中的请求，等待它
+    // 检查是否已有加载中的请求
     if (loadingPromises.has(key)) {
       return loadingPromises.get(key)
     }
 
-    // 2. 检查 LRU 缓存
-    if (enableLRU && lruCache.has(key)) {
-      const lruValue = lruCache.get(key)
-      if (lruValue !== undefined) {
-        data.value = lruValue
-        updateCacheStats(key, true)
-        return
-      }
-    }
-
-    // 3. 检查内存缓存
+    // 检查内存缓存
     if (globalCache.has(key)) {
       data.value = globalCache.get(key)
-      updateCacheStats(key, true)
       return
     }
 
-    // 4. 检查 localStorage 缓存
-    if (strategy === 'localStorage' || strategy === 'hybrid') {
-      const storageCache = readFromStorage<T>(key)
-      if (storageCache && !isExpired(storageCache, ttl)) {
-        data.value = storageCache.data
-        globalCache.set(key, storageCache.data)
-        if (enableLRU) {
-          lruCache.set(key, storageCache.data)
-        }
-        updateCacheStats(key, true)
-        return
-      }
-    }
-
-    // 5. 请求合并：相同 key 的请求只发一次
-    if (enableMerge && globalRequestMerger.hasPending(key)) {
-      loading.value = true
-      try {
-        await globalRequestMerger.mergeRequest(key, () => fetcher())
-        // 合并请求完成后，从内存缓存获取
-        if (globalCache.has(key)) {
-          data.value = globalCache.get(key)
-        }
-      } finally {
-        loading.value = false
-      }
+    // 检查 localStorage 缓存
+    const storageCache = getStorageCache()
+    if (storageCache && !isExpired(storageCache, options.ttl)) {
+      data.value = storageCache.data
+      globalCache.set(key, storageCache.data)
       return
     }
 
-    // 6. 从服务器获取
+    // 创建加载 Promise
     const loadPromise = (async () => {
       loading.value = true
       error.value = null
 
-      // 获取旧缓存用于降级
-      let staleData: T | null = null
-      if (strategy === 'localStorage' || strategy === 'hybrid') {
-        const storageCache = readFromStorage<T>(key)
-        if (storageCache) {
-          staleData = storageCache.data
-        }
-      }
-
       try {
-        let result: T
-
-        if (enableRetry) {
-          result = await RetryManager.fetchWithRetry(fetcher, {
-            ...retryConfig,
-            onRetry: (err, attempt) => {
-              retryConfig.onRetry?.(err, attempt)
-            },
-          })
-        } else {
-          result = await fetcher()
-        }
-
+        const result = await fetcher()
         data.value = result
 
         // 更新缓存
@@ -303,34 +140,14 @@ export function useBasicDataCache<T>(
         }
 
         globalCache.set(key, result)
-        if (enableLRU) {
-          lruCache.set(key, result)
-        }
-        if (strategy === 'localStorage' || strategy === 'hybrid') {
-          writeToStorage(key, cacheEntry)
-        }
-
-        // 清除请求合并状态
-        if (enableMerge) {
-          globalRequestMerger.cancelRequest(key)
-        }
-
-        // 更新统计
-        const stats = cacheStats.get(key)
-        if (stats) {
-          stats.timestamp = cacheEntry.timestamp
-          stats.size = globalCache.size
-          stats.expired = false
-          cacheStats.set(key, stats)
-        }
+        setStorageCache(cacheEntry)
       } catch (err) {
         error.value = err as Error
-        updateCacheStats(key, false)
 
-        // 降级：如果有旧缓存，使用旧数据
-        if (staleData) {
-          data.value = staleData
-          globalCache.set(key, staleData)
+        // 如果有旧缓存，降级使用
+        if (storageCache) {
+          data.value = storageCache.data
+          globalCache.set(key, storageCache.data)
         }
       } finally {
         loading.value = false
@@ -354,7 +171,6 @@ export function useBasicDataCache<T>(
       return load()
     },
     clearCache,
-    load,
   }
 }
 
@@ -363,13 +179,8 @@ export function useBasicDataCache<T>(
  */
 export function clearAllBasicDataCache(): void {
   globalCache.clear()
-  lruCache.clear()
-  globalRequestMerger.cancelAllRequests()
-  loadingPromises.clear()
-  cacheStats.clear()
-
   Object.keys(localStorage)
-    .filter(key => key.startsWith('basic-data:') || key.startsWith('enhanced-cache:'))
+    .filter(key => key.startsWith('basic-data:'))
     .forEach(key => localStorage.removeItem(key))
 }
 
@@ -379,38 +190,8 @@ export function clearAllBasicDataCache(): void {
 export async function preloadBasicData<T>(
   key: string,
   fetcher: () => Promise<T>,
-  options: { ttl: number } = { ttl: 5 * 60 * 1000 }
+  options: { ttl: number }
 ): Promise<void> {
-  const cache = useBasicDataCache(key, fetcher, options)
-  await new Promise<void>((resolve) => {
-    const unwatch = watch(
-      () => cache.loading.value,
-      (isLoading) => {
-        if (!isLoading) {
-          unwatch()
-          resolve()
-        }
-      },
-      { immediate: true }
-    )
-  })
-}
-
-/**
- * 获取所有缓存统计信息
- */
-export function getAllCacheStats(): CacheStats[] {
-  const stats: CacheStats[] = []
-  cacheStats.forEach((value) => {
-    stats.push({ ...value })
-  })
-  return stats
-}
-
-/**
- * 获取指定缓存的统计信息
- */
-export function getCacheStats(key: string): CacheStats | null {
-  const stats = cacheStats.get(key)
-  return stats ? { ...stats } : null
+  const { load } = useBasicDataCache(key, fetcher, options)
+  await load()
 }

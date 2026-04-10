@@ -3,18 +3,40 @@
  * 所有基础数据相关的 Hooks 和工具函数都从这里导入
  */
 
-// 字典数据 Hooks
+// Hooks
 export { useDictType, useAllDictData, useDictTypes } from './useDict'
-
-// 业务数据 Hooks（工厂函数 + 预定义 Hook）
 export { usePorts, useCountries, useCurrencies, useVessels, createBaseDataHook } from './hooks'
 
 // 适配器
 export { createAdapter, BaseAdapter, DictAdapter } from './adapters'
 export type { AdapterConfig } from './adapters'
 
-// 缓存管理
-export { useBasicDataCache, clearAllBasicDataCache, preloadBasicData, getAllCacheStats, getCacheStats } from './cache'
+// 缓存 v1.0
+export { useBasicDataCache, clearAllBasicDataCache, preloadBasicData } from './cache'
+
+// 缓存 v2.0（增强版）
+export {
+  useEnhancedCache,
+  clearAllEnhancedCache,
+  getAllCacheStats,
+} from './cache-enhanced'
+
+// LRU 缓存
+export { LRUCache } from './cache-lru'
+
+// 智能重试
+export {
+  RetryManager,
+  useRetry,
+} from './retry'
+export type { RetryConfig } from './retry'
+
+// 请求合并
+export {
+  RequestMergeManager,
+  globalRequestMerger,
+  useRequestMerge,
+} from './request-merge'
 
 // 类型
 export type {
@@ -24,13 +46,11 @@ export type {
   QueryParams,
   CacheConfig,
   CacheEntry,
-  CacheStats,
   BaseDataHookResult,
   DictHookResult,
-  RetryConfig,
 } from './types'
 
-// API（按需导入，通常不直接使用）
+// API
 export {
   fetchDictData,
   fetchAllDictData,

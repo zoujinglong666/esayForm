@@ -1,31 +1,24 @@
 /**
  * 基础数据类型定义
- * 统一的类型系统，支持国际化
  */
 
 /**
  * 基础数据项接口
- * transform 后统一拥有 code/name/nameEn/enabled 字段
  */
 export interface BaseDataItem {
   code: string | number
   name: string
-  /** 英文名称，用于国际化 */
-  nameEn?: string
+  label?: string
   enabled?: boolean
   [key: string]: any
 }
 
 /**
  * 字典项接口
- * transform 后统一拥有 value/label/labelEn 字段
  */
 export interface DictItem {
   value: string | number
   label: string
-  /** 英文标签，用于国际化 */
-  labelEn?: string
-  dictType?: string
   [key: string]: any
 }
 
@@ -44,8 +37,6 @@ export interface ApiResponse<T = any> {
 export interface QueryParams {
   keyword?: string
   enabledOnly?: boolean
-  /** 是否使用英文名称（国际化） */
-  useEnglish?: boolean
 }
 
 /**
@@ -54,30 +45,6 @@ export interface QueryParams {
 export interface CacheConfig {
   key: string
   ttl: number
-  /** 缓存策略：内存、localStorage、混合（默认） */
-  strategy?: 'memory' | 'localStorage' | 'hybrid'
-  /** 内存缓存最大条目数（启用 LRU 时有效） */
-  memoryMaxSize?: number
-  /** 是否启用 LRU 淘汰 */
-  enableLRU?: boolean
-  /** 是否启用智能重试 */
-  enableRetry?: boolean
-  /** 重试配置 */
-  retryConfig?: RetryConfig
-  /** 是否启用请求合并 */
-  enableMerge?: boolean
-}
-
-/**
- * 重试配置接口
- */
-export interface RetryConfig {
-  maxRetries?: number
-  retryDelay?: number
-  exponentialBackoff?: boolean
-  retryableErrors?: (error: any) => boolean
-  onRetry?: (error: any, attempt: number) => void
-  onSuccess?: (result: any, attempt: number) => void
 }
 
 /**
@@ -86,20 +53,6 @@ export interface RetryConfig {
 export interface CacheEntry<T> {
   data: T
   timestamp: number
-  _version?: number
-}
-
-/**
- * 缓存统计信息
- */
-export interface CacheStats {
-  key: string
-  hits: number
-  misses: number
-  size: number
-  timestamp: number
-  ttl: number
-  expired: boolean
 }
 
 /**

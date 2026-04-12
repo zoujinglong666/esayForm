@@ -169,11 +169,17 @@ export function useEnhancedCache<T>(
    */
   const getMemoryCache = (): T | null => {
     const entry = enhancedCacheStore.get(key)
-    if (entry && !isExpired(entry, ttl)) {
-      updateCacheStats(key, true)
-      return entry.data
+    if (!entry) return null
+    if (isExpired(entry, ttl)) {
+      // 过期条目及时清理，避免内存泄漏
+      enhancedCacheStore.delete(key)
+      if (enableLRU) {
+        lruCache.delete(key)
+      }
+      return null
     }
-    return null
+    updateCacheStats(key, true)
+    return entry.data
   }
 
   /**
@@ -278,20 +284,41 @@ export function useEnhancedCache<T>(
   }
 
   /**
+   * 从全局缓存同步数据到本地 ref
+   */
+  const syncFromGlobalCache = (): boolean => {
+    // 优先从内存缓存同步
+    const memoryValue = getMemoryCache()
+    if (memoryValue !== null) {
+      data.value = memoryValue as any
+      return true
+    }
+    // 再从 localStorage 缓存同步
+    if (strategy === 'localStorage' || strategy === 'hybrid') {
+      const storageValue = getStorageCache()
+      if (storageValue !== null) {
+        data.value = storageValue as any
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
    * 加载数据
    */
   async function load(): Promise<void> {
-    // 请求合并模式
-    if (enableMerge) {
-      if (globalRequestMerger.hasPending(key)) {
-        loading.value = true
-        try {
-          await globalRequestMerger.mergeRequest(key, () => Promise.resolve())
-        } finally {
-          loading.value = false
-        }
-        return
+    // 请求合并模式：如果已有相同 key 的请求在进行中，等待其完成后同步数据
+    if (enableMerge && globalRequestMerger.hasPending(key)) {
+      loading.value = true
+      try {
+        await globalRequestMerger.mergeRequest(key, fetcher)
+      } finally {
+        loading.value = false
       }
+      // 请求完成后，从全局缓存同步数据到本地 ref
+      syncFromGlobalCache()
+      return
     }
 
     // 检查 LRU 缓存

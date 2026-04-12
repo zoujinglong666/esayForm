@@ -3,11 +3,27 @@
  * 提供各种业务数据的组合式函数
  */
 
+import type { Ref, ComputedRef } from 'vue'
 import type { BaseDataHookResult, BaseDataItem, QueryParams, CacheConfig } from './types'
 import type { AdapterConfig } from './adapters'
 import { useBasicDataCache } from './cache'
 import { createAdapter } from './adapters'
 import { fetchPortList, fetchCountryList, fetchCurrencyList, fetchVesselList } from './api'
+
+/**
+ * 参数类型：支持普通对象、Ref、ComputedRef
+ */
+type MaybeRefQueryParams = QueryParams | Ref<QueryParams> | ComputedRef<QueryParams>
+
+/**
+ * 解包 MaybeRef 类型的参数
+ */
+function unrefParams(params: MaybeRefQueryParams): QueryParams {
+  if (isRef(params)) {
+    return params.value
+  }
+  return params
+}
 
 /**
  * 创建基础数据 Hook 的工厂函数
@@ -16,16 +32,28 @@ import { fetchPortList, fetchCountryList, fetchCurrencyList, fetchVesselList } f
  * @param fetchFn 数据获取函数
  * @param adapterConfig 适配器配置（labelKey / valueKey 等）
  * @param cacheConfig 缓存配置
- * @returns 基础数据 Hook
+ * @returns 基础数据 Hook，params 支持传入响应式对象（Ref / ComputedRef）以实现动态过滤
+ *
+ * @example
+ * ```ts
+ * // 静态参数（向后兼容）
+ * const { options } = usePorts({ enabledOnly: true })
+ *
+ * // 响应式参数 — 过滤条件动态变化
+ * const showDisabled = ref(false)
+ * const { options } = usePorts(computed(() => ({
+ *   enabledOnly: !showDisabled.value,
+ * })))
+ * ```
  */
 export function createBaseDataHook(
   fetchFn: () => Promise<any>,
   adapterConfig: AdapterConfig,
   cacheConfig: CacheConfig
-): (params?: QueryParams) => BaseDataHookResult<BaseDataItem> {
+): (params?: MaybeRefQueryParams) => BaseDataHookResult<BaseDataItem> {
   const adapter = createAdapter(adapterConfig)
 
-  return (params: QueryParams = {}): BaseDataHookResult<BaseDataItem> => {
+  return (params: MaybeRefQueryParams = {}): BaseDataHookResult<BaseDataItem> => {
     // 使用缓存系统
     const { data, loading, error, refresh, clearCache } = useBasicDataCache<BaseDataItem[]>(
       cacheConfig.key,
@@ -33,14 +61,15 @@ export function createBaseDataHook(
       { ttl: cacheConfig.ttl }
     )
 
-    // 根据参数过滤数据
+    // 根据参数过滤数据（支持响应式参数）
     const filteredData = computed(() => {
+      const p = unrefParams(params)
       let result: BaseDataItem[] = data.value || []
 
-      if (params.keyword) {
-        result = adapter.filterByKeyword(result, params.keyword)
+      if (p.keyword) {
+        result = adapter.filterByKeyword(result, p.keyword)
       }
-      if (params.enabledOnly) {
+      if (p.enabledOnly) {
         result = adapter.filterByEnabled(result, true)
       }
 
@@ -71,7 +100,7 @@ export function createBaseDataHook(
  */
 export const usePorts = createBaseDataHook(
   fetchPortList,
-  { labelKey: 'portNameCn', valueKey: 'portCode' },
+  { labelKey: 'portNameCn', valueKey: 'portCode', enabledKey: 'status', enabledTruthy: 1 },
   { key: 'PORTS', ttl: 10 * 60 * 1000 } // 10 分钟缓存
 )
 
@@ -81,7 +110,7 @@ export const usePorts = createBaseDataHook(
  */
 export const useCountries = createBaseDataHook(
   fetchCountryList,
-  { labelKey: 'countryName', valueKey: 'countryCode' },
+  { labelKey: 'countryName', valueKey: 'countryCode', enabledKey: 'status', enabledTruthy: 1 },
   { key: 'COUNTRIES', ttl: 30 * 60 * 1000 } // 30 分钟缓存
 )
 
@@ -91,7 +120,7 @@ export const useCountries = createBaseDataHook(
  */
 export const useCurrencies = createBaseDataHook(
   fetchCurrencyList,
-  { labelKey: 'currencyName', valueKey: 'currencyCode' },
+  { labelKey: 'currencyName', valueKey: 'currencyCode', enabledKey: 'status', enabledTruthy: 1 },
   { key: 'CURRENCIES', ttl: 60 * 60 * 1000 } // 1 小时缓存
 )
 
@@ -101,6 +130,6 @@ export const useCurrencies = createBaseDataHook(
  */
 export const useVessels = createBaseDataHook(
   fetchVesselList,
-  { labelKey: 'vesselName', valueKey: 'vesselCode' },
+  { labelKey: 'vesselName', valueKey: 'vesselCode', enabledKey: 'status', enabledTruthy: 1 },
   { key: 'VESSELS', ttl: 15 * 60 * 1000 } // 15 分钟缓存
 )

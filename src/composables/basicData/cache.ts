@@ -3,7 +3,7 @@
  * 实现 TTL 机制 + 全局共享缓存
  */
 
-import type { CacheEntry, CacheConfig } from './types'
+import type { CacheEntry } from './types'
 
 /**
  * 全局缓存存储
@@ -75,7 +75,7 @@ export function useBasicDataCache<T>(
   fetcher: () => Promise<T>,
   options: { ttl: number }
 ) {
-  const data = ref<T | null>(null)
+  const data = ref<T | null>(null) as any as { value: T | null }
   const loading = ref(false)
   const error = ref<Error | null>(null)
 
@@ -96,23 +96,27 @@ export function useBasicDataCache<T>(
     removeFromStorage(key)
   }
 
-  // 检查缓存是否过期
-  const checkExpired = (): boolean => {
-    const cached = getStorageCache()
-    if (!cached) return true
-    return isExpired(cached, options.ttl)
+  // 同步全局缓存到本地 ref
+  const syncFromGlobalCache = (): boolean => {
+    if (globalCache.has(key)) {
+      data.value = globalCache.get(key)
+      return true
+    }
+    return false
   }
 
   // 加载数据（带去重）
   async function load(): Promise<void> {
     // 检查是否已有加载中的请求
     if (loadingPromises.has(key)) {
-      return loadingPromises.get(key)
+      await loadingPromises.get(key)
+      // 请求完成后，从全局缓存同步数据到本地 ref
+      syncFromGlobalCache()
+      return
     }
 
     // 检查内存缓存
-    if (globalCache.has(key)) {
-      data.value = globalCache.get(key)
+    if (syncFromGlobalCache()) {
       return
     }
 
@@ -192,6 +196,6 @@ export async function preloadBasicData<T>(
   fetcher: () => Promise<T>,
   options: { ttl: number }
 ): Promise<void> {
-  const { load } = useBasicDataCache(key, fetcher, options)
-  await load()
+  const { refresh } = useBasicDataCache(key, fetcher, options)
+  await refresh()
 }

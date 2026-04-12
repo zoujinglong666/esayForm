@@ -35,7 +35,7 @@ export class LRUCache<K, V> {
 
     // 超过容量，删除最久未使用的
     if (this.cache.size > this.maxSize) {
-      const firstKey = this.cache.keys().next().value
+      const firstKey = this.cache.keys().next().value as K
       this.cache.delete(firstKey)
     }
   }

@@ -87,18 +87,18 @@ export async function fetchPortList() {
   // TODO: 替换为实际的 API 请求
   // return request.get('/api/ports/list')
 
-  // 模拟数据
+  // 模拟数据（status: 1=启用, 0=禁用）
   const mockData = [
     { portCode: 'CNSHA', portNameCn: '上海港', countryCode: 'CN', status: 1 },
     { portCode: 'CNNGB', portNameCn: '宁波港', countryCode: 'CN', status: 1 },
     { portCode: 'CNSZX', portNameCn: '深圳港', countryCode: 'CN', status: 1 },
     { portCode: 'CNQDG', portNameCn: '青岛港', countryCode: 'CN', status: 1 },
-    { portCode: 'CNTJG', portNameCn: '天津港', countryCode: 'CN', status: 1 },
+    { portCode: 'CNTJG', portNameCn: '天津港', countryCode: 'CN', status: 0 },
     { portCode: 'USLAX', portNameCn: '洛杉矶港', countryCode: 'US', status: 1 },
-    { portCode: 'USNYC', portNameCn: '纽约港', countryCode: 'US', status: 1 },
+    { portCode: 'USNYC', portNameCn: '纽约港', countryCode: 'US', status: 0 },
     { portCode: 'SGSIN', portNameCn: '新加坡港', countryCode: 'SG', status: 1 },
     { portCode: 'JPTYO', portNameCn: '东京港', countryCode: 'JP', status: 1 },
-    { portCode: 'HKHKG', portNameCn: '香港港', countryCode: 'HK', status: 1 },
+    { portCode: 'HKHKG', portNameCn: '香港港', countryCode: 'HK', status: 0 },
   ]
 
   return new Promise(resolve => {
@@ -119,17 +119,17 @@ export async function fetchCountryList() {
   // TODO: 替换为实际的 API 请求
   // return request.get('/api/countries/list')
 
-  // 模拟数据
+  // 模拟数据（status: 1=启用, 0=禁用）
   const mockData = [
     { countryCode: 'CN', countryName: '中国', status: 1 },
     { countryCode: 'US', countryName: '美国', status: 1 },
     { countryCode: 'JP', countryName: '日本', status: 1 },
-    { countryCode: 'KR', countryName: '韩国', status: 1 },
+    { countryCode: 'KR', countryName: '韩国', status: 0 },
     { countryCode: 'SG', countryName: '新加坡', status: 1 },
-    { countryCode: 'HK', countryName: '香港', status: 1 },
+    { countryCode: 'HK', countryName: '香港', status: 0 },
     { countryCode: 'GB', countryName: '英国', status: 1 },
     { countryCode: 'DE', countryName: '德国', status: 1 },
-    { countryCode: 'FR', countryName: '法国', status: 1 },
+    { countryCode: 'FR', countryName: '法国', status: 0 },
     { countryCode: 'AU', countryName: '澳大利亚', status: 1 },
   ]
 
